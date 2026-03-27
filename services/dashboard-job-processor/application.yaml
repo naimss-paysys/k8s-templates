@@ -1,0 +1,418 @@
+# ===============================
+# Dashboard Job Processor Configuration
+# ===============================
+
+# CORS Configuration
+allowedOrigins: ${ALLOWED_ORIGINS:http://localhost:3000,http://localhost:4200}
+allowedHeaders: ${ALLOWED_HEADERS:*}
+
+# Disable security and flowable for job processor
+security:
+  enabled: false
+flowable:
+  enabled: false
+
+spring:
+  application:
+    name: dashboard-job-processor
+  redis:
+    host: ${REDIS_HOST:10.0.150.126}
+    port: 6379
+    password:  # Leave empty if no password
+    database: 0
+  # Allow bean definition overriding (needed for multi-module setup)
+  main:
+    allow-bean-definition-overriding: true
+  
+  # Database Configuration
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    driver-class-name: org.postgresql.Driver
+    url: ${DB_URL:jdbc:postgresql://10.0.150.11:5432/postgres?connectTimeout=10&socketTimeout=30&tcpKeepAlive=true}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD:postgres}
+    hikari:
+      pool-name: JobProcessorHikariPool
+      minimum-idle: 2
+      maximum-pool-size: 10
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      connection-timeout: 30000
+      leak-detection-threshold: 60000
+      keepalive-time: 300000
+      connection-test-query: SELECT 1
+      validation-timeout: 5000
+
+  # JPA Configuration
+  jpa:
+    hibernate:
+      ddl-auto: none
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        jdbc:
+          batch_size: 50
+        order_inserts: true
+        order_updates: true
+    open-in-view: false
+
+  # Spring Batch Configuration
+  batch:
+    jdbc:
+      initialize-schema: never
+      table-prefix: BATCH_
+    job:
+      enabled: false  # Disable auto-run of batch jobs
+
+  # Quartz Scheduler Configuration
+  quartz:
+    job-store-type: jdbc
+    jdbc:
+      initialize-schema: never
+    properties:
+      org:
+        quartz:
+          scheduler:
+            instanceName: DashboardJobScheduler
+            instanceId: AUTO
+          jobStore:
+            class: org.springframework.scheduling.quartz.LocalDataSourceJobStore
+            driverDelegateClass: org.quartz.impl.jdbcjobstore.PostgreSQLDelegate
+            tablePrefix: QRTZ_
+            isClustered: true
+            clusterCheckinInterval: 20000
+            misfireThreshold: 60000
+            useProperties: false
+          threadPool:
+            class: org.quartz.simpl.SimpleThreadPool
+            threadCount: 10
+            threadPriority: 5
+
+service:
+  url:
+    queue: http://10.0.150.126:7033/acq/queueforwarding/
+  secret: paysys@123
+  timeout: 30000  # 30 seconds timeout for MPAY calls
+  retry:
+    attempts: 3
+    delay-ms: 1000
+
+# ===============================
+# Server Configuration
+# ===============================
+server:
+  port: ${SERVER_PORT:8085}
+  max-http-request-header-size: 64KB
+  servlet:
+    context-path: /job-processor
+    session:
+      timeout: ${SESSION_TIMEOUT:3600}
+
+# ===============================
+# JWT Configuration
+# ===============================
+jwt:
+  expiration-ms: ${JWT_EXPIRATION_MS:86400000}  # 24 hours
+
+# ===============================
+# Security Configuration
+# ===============================
+secret_key: ${SECRET_KEY:d4f12d6c8e9a9d0b}
+
+# ===============================
+# Backoffice/HTTP Client Configuration
+# ===============================
+backoffice:
+  stan: ${BACKOFFICE_STAN:100000}  # Initial STAN value
+  connect:
+    timeout: ${BACKOFFICE_CONNECT_TIMEOUT:10000}  # 10 seconds
+  read:
+    timeout: ${BACKOFFICE_READ_TIMEOUT:30000}     # 30 seconds
+
+# ===============================
+# Dashboard Configuration
+# ===============================
+dashboard:
+  type: ${DASHBOARD_TYPE:JOB_PROCESSOR}
+
+# ===============================
+# Cache Configuration
+# ===============================
+blacklistJwt:
+  cache:
+    name: ${BLACKLIST_JWT_CACHE_NAME:blacklistJwtCache}
+    timeout: ${BLACKLIST_JWT_CACHE_TIMEOUT:3600000}  # 1 hour in milliseconds
+
+# ===============================
+# Email Configuration
+# ===============================
+email:
+  url: ${EMAIL_SERVICE_URL:http://localhost:8080/email/send}
+  from_name: ${EMAIL_FROM_NAME:Dashboard Job Processor}
+  from_email: ${EMAIL_FROM:noreply@dashboard.com}
+
+# ===============================
+# Bank Transfer Configuration
+# ===============================
+bank:
+  transfer:
+    telepin:
+      endpoint: ${BANK_TRANSFER_ENDPOINT:http://localhost:8080/telepin}
+      consumerId: ${BANK_TRANSFER_CONSUMER_ID:DASHBOARD}
+      terminalType: ${BANK_TRANSFER_TERMINAL_TYPE:WEB}
+      shortCode: ${BANK_TRANSFER_SHORT_CODE:50111}
+      feeCheckOperation: ${BANK_TRANSFER_FEE_OP:2022}
+      paymentOperation: ${BANK_TRANSFER_PAYMENT_OP:7005}
+
+# ===============================
+# Job Processor Specific Settings
+# ===============================
+job-processor:
+  # Default batch settings
+  defaults:
+    batch-size: 100
+    thread-pool-size: 5
+    max-retries: 3
+    timeout-seconds: 3600
+  
+  # Stale job detection
+  stale-job:
+    threshold-minutes: 60
+    cleanup-enabled: true
+    cleanup-cron: "0 0 * * * ?"  # Every hour
+  
+  # Execution history retention
+  history:
+    retention-days: 90
+    purge-enabled: true
+    purge-cron: "0 0 2 * * ?"  # 2 AM daily
+  
+  # Rate limiting for API calls
+  rate-limit:
+    enabled: true
+    requests-per-second: 10
+
+# ===============================
+# Scheduled Payment (Settlement) Configuration
+# ===============================
+scheduled:
+  payment:
+    # Telepin Service Names
+    service:
+      transfer: ${SCHEDULED_PAYMENT_TRANSFER_SERVICE:axian-mmp-proxy-transfer}
+      inquiry: ${SCHEDULED_PAYMENT_INQUIRY_SERVICE:axian-transaction-query-status}
+    # Telepin Authentication
+    consumer-id: ${SCHEDULED_PAYMENT_CONSUMER_ID:mfs_app_new}
+    channel-user: ${SCHEDULED_PAYMENT_CHANNEL_USER:}         # Required - channel username
+    channel-pass: ${SCHEDULED_PAYMENT_CHANNEL_PASS:}         # Required - channel password
+    terminal-type: ${SCHEDULED_PAYMENT_TERMINAL_TYPE:API}
+    payment-type: ${SCHEDULED_PAYMENT_PAYMENT_TYPE:PAYMENT_PROXY}
+    # W2W Transfer Configuration
+    w2w-shortcode: ${SCHEDULED_PAYMENT_W2W_SHORTCODE:}       # Required - W2W shortcode
+    # Processing Configuration
+    batch-limit: ${SCHEDULED_PAYMENT_BATCH_LIMIT:100}        # Max schedules per job run
+    max-inquiry-retries: ${SCHEDULED_PAYMENT_MAX_RETRIES:3}  # Max inquiry retries
+    timezone: ${SCHEDULED_PAYMENT_TIMEZONE:Africa/Dar_es_Salaam}
+
+# ===============================
+# Transaction Inquiry Configuration
+# ===============================
+transaction:
+  inquiry:
+    inquiryMaxAttempts: ${TRANSACTION_INQUIRY_MAX_ATTEMPTS:3}
+    inquiryDelayMs: ${TRANSACTION_INQUIRY_DELAY_MS:2000}
+    telepin:
+      type: ${TRANSACTION_INQUIRY_TYPE:}
+      endpoint: ${TRANSACTION_INQUIRY_ENDPOINT:}
+
+wallet:
+  api:
+    balance:
+      endpoint: http://10.0.150.126:3011/osb/services/GetBalance_3_0
+    account-status:
+      endpoint: http://10.0.150.126:3011/osb/services/ViewMFSAccountType_1_0
+    username: live_mfs_app
+    password: password
+    consumer-id: mfs_app_new
+    country: TZA
+    short-code: 600747
+    channel-user: self.care.app
+    channel-password: password
+
+
+
+# Handler Management Configuration
+handler:
+  management:
+    handler-id-prefix: S
+    features-role-name: Merchant_Portal  # Role whose authorities define available handler features
+    telepin:
+      create-account-service: axian-create-mfs-account  # placeholder - update when Telepin API details are provided
+      terminalType: API
+      channelUser: mixx.merchant
+      channelUserPin: GoMixx@2026
+      serviceAccount: 
+      pin: 
+
+# ========================================================================
+# NOTIFICATION SERVICE CONFIGURATION
+# ========================================================================
+notification:
+  # SMS Channel Configuration (uses MPAY gateway)
+  sms:
+    enabled: ${NOTIFICATION_SMS_ENABLED:true}
+    url: ${NOTIFICATION_SMS_URL:http://43.225.98.87/MESSAGING/URL/MSGURL.ASPX}
+
+  # Email Channel Configuration (uses MPAY gateway)
+  email:
+    enabled: ${NOTIFICATION_EMAIL_ENABLED:true}
+    url: ${NOTIFICATION_EMAIL_URL:http://10.0.150.21:7034/api/EmailService}
+
+  # Push Notification Channel (WebSocket/STOMP)
+  push:
+    enabled: ${NOTIFICATION_PUSH_ENABLED:false}
+
+  # Queue Processor — ENABLED in job-processor (this is the designated module)
+  queue:
+    processor:
+      enabled: false
+    poll-interval-ms: ${NOTIFICATION_POLL_INTERVAL:5000}    # 5 seconds
+    batch-size: ${NOTIFICATION_BATCH_SIZE:50}               # Items per batch
+
+  # Retry Configuration (exponential backoff: 30s, 60s, 120s)
+  retry:
+    max-attempts: ${NOTIFICATION_MAX_RETRIES:3}
+    base-delay-seconds: ${NOTIFICATION_RETRY_BASE_DELAY:30}
+
+  # Stuck item detection (items in SENDING state longer than threshold)
+  stuck-threshold-minutes: ${NOTIFICATION_STUCK_THRESHOLD:5}
+
+  # Default locale for template resolution
+  default-locale: ${NOTIFICATION_DEFAULT_LOCALE:en}
+
+external-api:
+
+  auth:
+    username: "mixx.merchant"
+    password: "GoMixx@2026"
+    agent-msisdn: "255716761995"
+
+  acquirer-id: "02501"
+
+  requests:
+    wallet-registration:
+      tran-type: "axian-core-registration-staging"
+      short-code: "59019"
+
+    change-group-id:
+      tran-type: "axian-core-change-group-id-staging"
+      group-id: "78"
+
+    update-alias-code:
+      tran-type: "axian-core-update-alias-code-staging"
+
+    cvm-trigger:
+      tran-type: "axian-cvm-trigger-staging"
+
+
+MERCHANT_PREFIXES:
+  EAN: "02501"
+
+# ===============================
+# Logging Configuration
+# ===============================
+logging:
+  level:
+    root: INFO
+    com.paysyslabs.dashboard.jobprocessor: DEBUG
+    org.springframework.batch: INFO
+    org.quartz: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/job-processor.log
+    max-size: 100MB
+    max-history: 30
+
+# ===============================
+# Actuator & Monitoring
+# ===============================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus,quartz,scheduledtasks
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when_authorized
+    quartz:
+      enabled: true
+  health:
+    ldap:
+      enabled: false
+    db:
+      enabled: true
+    diskspace:
+      enabled: true
+
+# ===============================
+# OpenAPI / Swagger Configuration
+# ===============================
+springdoc:
+  api-docs:
+    path: /api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    operationsSorter: alpha
+    tagsSorter: alpha
+  show-actuator: true
+
+# ===============================
+# Profiles
+# ===============================
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+  jpa:
+    show-sql: true
+  batch:
+    jdbc:
+      initialize-schema: always
+  quartz:
+    jdbc:
+      initialize-schema: always
+
+logging:
+  level:
+    com.paysyslabs.dashboard.jobprocessor: TRACE
+    org.hibernate.SQL: DEBUG
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  jpa:
+    show-sql: false
+  batch:
+    jdbc:
+      initialize-schema: never
+  quartz:
+    jdbc:
+      initialize-schema: never
+
+logging:
+  level:
+    root: WARN
+    com.paysyslabs.dashboard.jobprocessor: INFO
+

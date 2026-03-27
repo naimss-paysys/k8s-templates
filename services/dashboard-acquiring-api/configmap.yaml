@@ -1,0 +1,137 @@
+apiVersion: v1
+data:
+  application.yaml: "# BANK_TRANSFER_URL\n# QR_PAYMENTS_URL\n# WALLET_BALANCE_URL\n#
+    WALLET_ACCOUNT_STATUS_URL\n# PIN_SERVICE_URL\n# MPAY_URL\n# EMAIL_SERVICE_URL\n#
+    SMS_SERVICE_URL\n# TRANSACTION_INQUIRY_URL\n\nserver:\n  port: ${PORT:5503}\n
+    \ max-http-request-header-size: 64KB\n  servlet:\n    session:\n      timeout:
+    5000\n      cookie:\n        secure: true\n\n# API Documentation\nspringdoc:\n
+    \ api-docs:\n    path: /api-docs\n  swagger-ui:\n    path: /swagger-ui.html\n
+    \   operationsSorter: method\n    tagsSorter: alpha\n\nswagger:\n  enabled: true\n\n#
+    CORS Configuration\nallowedHeaders: 'Authorization,Content-Type,X-Requested-With,Accept,Origin,Access-Control-Allow-Origin,Access-Control-Allow-Credentials,X-API-Key'\nallowedOrigins:
+    '*'\n\n# Application Configuration\napplication:\n  name: acquiring-service\n
+    \ description: Acquiring Service - External Internet-facing APIs\n  version: 1.0.0\n\n#
+    JWT Configuration\njwt:\n  expiration-ms: 86400000  # 24 hours\n\n# Spring Configuration\nspring:\n
+    \ application:\n    name: acquiring-service\n  \n  # Redis Configuration for caching
+    and rate limiting\n  redis:\n    host: ${REDIS_HOST:10.0.150.126}\n    port: ${REDIS_PORT:6379}\n
+    \   password: ${REDIS_PASSWORD:}\n    database: 0\n    timeout: 2000ms\n    lettuce:\n
+    \     pool:\n        max-active: 8\n        max-idle: 8\n        min-idle: 0\n
+    \       max-wait: -1ms\n  \n  cache:\n    type: redis\n    redis:\n      time-to-live:
+    86400000\n      cache-null-values: false\n  \n  servlet:\n    multipart:\n      max-file-size:
+    10MB\n      max-request-size: 10MB\n  \n  thymeleaf:\n    cache: false\n  \n  jmx:\n
+    \   enabled: false\n  \n  # Database Configuration\n  datasource:\n    type: com.zaxxer.hikari.HikariDataSource\n
+    \   driver-class-name: org.postgresql.Driver\n    url: ${DB_URL:jdbc:postgresql://10.0.150.11:5432/postgres}\n
+    \   username: ${DB_USERNAME:postgres}\n    password: ${DB_PASSWORD:postgres}\n
+    \ \n  jackson:\n    serialization:\n      FAIL_ON_EMPTY_BEANS: false\n  \n  #
+    HikariCP Configuration\n  hikari:\n    pool-name: AcquiringServicePool\n    maximum-pool-size:
+    10\n    minimum-idle: 2\n    idle-timeout: 900000\n    connection-timeout: 30000\n
+    \   max-lifetime: 1800000\n    leak-detection-threshold: 120000\n    validation-timeout:
+    5000\n    auto-commit: true\n  \n  # JPA Configuration\n  jpa:\n    generate-ddl:
+    false\n    hibernate:\n      ddl-auto: none\n    show-sql: true\n    properties:\n
+    \     hibernate:\n        dialect: org.hibernate.dialect.PostgreSQLDialect\n        id:\n
+    \         new_generator_mappings: true\n\n# Dashboard Configuration\ndashboard:\n
+    \ type: ACQUIRING_SERVICE\n  api:\n    key: ${API_KEY:acquiring-service-api-key}\n
+    \   secret: ${API_SECRET:acquiring-service-api-secret}\n\n# Pagination\npage:\n
+    \ size: 10\n\n# Token Configuration\ntoken:\n  store:\n    eviction: 280000\n
+    \   type: redis\n\n# Security Configuration\nsecret_key: \"d4f12d6c8e9a9d0b\"\n\nsecurity:\n#
+    \ enabled: false\n  login:\n    max-failures: 5\n    lock-duration-minutes: 1\n\n#
+    Rate Limiting Configuration\nrate-limit:\n  enabled: true\n  max-requests: 100\n
+    \ base-window-ms: 60000\n  penalty-ms: 10000\n\n# Actuator Endpoints\nmanagement:\n
+    \ health:\n    ldap:\n      enabled: false\n  endpoints:\n    web:\n      exposure:\n
+    \       include: health,info,metrics,prometheus\n      base-path: /actuator\n
+    \ endpoint:\n    health:\n      show-details: when-authorized\n    info:\n      enabled:
+    true\n\n# Service Timeouts\nacquiring-service:\n  connect:\n    timeout: 5000\n
+    \ read:\n    timeout: 5000\n\n# ========================================================================\n#
+    BEST PRACTICES & RECOMMENDATIONS\n# ========================================================================\n#
+    \n# 1. IDEMPOTENCY TTL:\n#    - Production: 24-48 hours (balance between duplicate
+    prevention and storage)\n#    - High-volume: 12-24 hours (reduces database size)\n#
+    \   - Low-volume: 48-72 hours (better customer support)\n#\n# 2. RETRY CONFIGURATION:\n#
+    \   - maxAttempts: 3-5 attempts (more attempts = longer wait, fewer = faster failure)\n#
+    \   - intervalSeconds: 15-30 seconds (Telepin processing time + network latency)\n#
+    \   - Best practice: Exponential backoff (implement in AsyncRetryServiceImpl)\n#
+    \     Example: 10s, 20s, 40s instead of fixed 20s intervals\n#\n# 3. TIMEOUT SETTINGS:\n#
+    \   - Connection timeout: 10-15 seconds (network establishment)\n#    - Read timeout:
+    30-60 seconds (Telepin processing time)\n#    - Circuit breaker: Implement Resilience4j
+    for Telepin failures\n#\n# 4. THREAD POOL SIZING:\n#    - Core pool size = Number
+    of expected concurrent SUBMITTED transactions\n#    - Max pool size = 2x core
+    size (handles traffic spikes)\n#    - Queue capacity = 10x core size (prevents
+    thread pool rejection)\n#    - Monitor: ThreadPoolTaskExecutor metrics via Actuator\n#\n#
+    5. SECURITY:\n#    - Telepin credentials: Store in environment variables (not
+    in code)\n#    - Callback authentication: Enable BEARER or API_KEY in production\n#
+    \   - MSISDN masking: Mask customer MSISDN in logs (GDPR compliance)\n#\n# 6.
+    MONITORING & ALERTING:\n#    - Track retry success rate: Should be >95%\n#    -
+    Alert on high retry counts: >maxAttempts indicates Telepin issues\n#    - Monitor
+    idempotency cache hit rate: High rate = duplicate requests\n#    - Dashboard metrics:
+    Transaction status distribution (SUCCESS/FAILED/SUBMITTED)\n#\n# 7. DATABASE OPTIMIZATION:\n#
+    \   - Create index on txn_transaction.transaction_status + retry_count\n#    -
+    Partition txn_idempotency_log by created_at (monthly partitions)\n#    - Archive
+    old callback_log records (>90 days) to cold storage\n#\n# 8. RATE LIMITING:\n#
+    \   - Per merchant: 10 requests/minute (prevents abuse)\n#    - Per customer MSISDN:
+    5 requests/minute (duplicate prevention)\n#    - Global: 1000 requests/minute
+    (infrastructure protection)\n#\n# 9. DISASTER RECOVERY:\n#    - Implement manual
+    retry endpoint for stuck SUBMITTED transactions\n#    - Backup webhook: SMS fallback
+    if Super App callback fails\n#    - Transaction reconciliation: Daily batch job
+    comparing MMP vs Telepin\n#\n# 10. PERFORMANCE TUNING:\n#     - Enable Redis caching
+    for merchant lookup (reduce DB load)\n#     - Use PreparedStatement for transaction
+    inserts (prevent SQL injection)\n#     - Batch insert for callback_log (improve
+    write performance)\n# ========================================================================\n\n#
+    Logging\nlogging:\n  level:\n    root: INFO\n    com.paysyslabs.dashboard: INFO\n
+    \   org.springframework.security: INFO\n\n\nblacklistJwt.cache:\n  name: blacklistJwtCache\n
+    \ timeout: 36000000 # 10 hours = 10 * 60 * 60 * 1000\n\n\nexternal-onboarding:\n
+    \ identification: MSISDN\n  maker: Labesh_Maker\n\nbackoffice:\n  stan: 1\n  connect:\n
+    \   timeout: 3000000\n  read:\n    timeout: 3000000\n\n\nemail:\n  from_name:
+    paysyslabs\n  from_email: watcher@paysyslabs.com\n  url: ${EMAIL_SERVICE_URL:http://10.0.150.21:7034/api/EmailService}\n
+    \ change:\n    password_backoffice: http://localhost:6096\n    password_portal:
+    http://localhost:6097\n\npassword:\n  wrong-attempt: 10\n  regex: ((?=.*[a-z])(?=.*\\d)(?=.*[A-Z])(?=.*[@#$%!]).{8,16})\n
+    \ reset:\n    token-expiration-minutes: 1440\n\naggregator : Faisal Bank Limited\n\nbank:\n
+    \ transfer:\n    telepin:\n      endpoint: ${BANK_TRANSFER_URL:http://10.0.150.126:3011/TigoPaymentGateway_1_2}\n
+    \     consumerId: mfs_app_new\n      terminalType: USD\n      shortCode: 50111\n
+    \     feeCheckOperation: 2022\n\n\n# ========================================================================\n#
+    QR PAYMENT CONFIGURATION\n# ========================================================================\nqr:\n
+    \ payment:\n    # Telepin API Configuration\n    telepin:\n      endpoint: ${QR_PAYMENTS_URL:http://10.0.150.126:3011/TigoPaymentGateway_1_2}\n
+    \     consumerId: mfs_app_new\n      terminalType: USD\n      shortCode: 50001
+    \ # Fixed short code for QR payments\n      calculateFeeOperation: 1944  # Operation
+    code for fee calculation\n      paymentOperation: 1945  # Operation code for payment
+    execution\n\n    # Idempotency Configuration\n    idempotency:\n      ttlHours:
+    24  # Cache idempotency records for 24 hours\n\n    # Retry Configuration\n    retry:\n
+    \     maxAttempts: 3  # Maximum retry attempts for SUBMITTED transactions\n      intervalSeconds:
+    20  # Wait time between retry attempts\n      timeoutSeconds: 30  # HTTP timeout
+    for each inquiry attempt\n\n    # Thread Pool Configuration for Async Processing\n
+    \   async:\n      corePoolSize: 5  # Minimum threads for async retry processing\n
+    \     maxPoolSize: 10  # Maximum threads for async retry processing\n      queueCapacity:
+    100  # Queue capacity for pending async tasks\n      threadNamePrefix: \"qr-payment-async-\"\n
+    \   image-size: 300\n    mid-length: 15\n\n# MPAY Service Configuration\nservice:\n
+    \ url:\n    queue: ${MPAY_URL:http://10.0.150.126:7033/acq/queueforwarding/}\n
+    \ secret: paysys@123\n  timeout: 30000  # 30 seconds timeout for MPAY calls\n
+    \ retry:\n    attempts: 3\n    delay-ms: 1000\n\ntwo-fa:\n  public-key-path: D:\\keys\\key-public.pem\n
+    \ time-left: 60 # in seconds e.g. 60 secs\n\n\nwallet:\n  api:\n    balance:\n
+    \     endpoint: ${WALLET_BALANCE_URL:http://10.0.150.126:3011/osb/services/GetBalance_3_0}\n
+    \   account-status:\n      endpoint: ${WALLET_ACCOUNT_STATUS_URL:http://10.0.150.126:3011/osb/services/ViewMFSAccountType_1_0}\n
+    \   username: live_mfs_app\n    password: <your_password>\n    consumer-id: mfs_app_new\n
+    \   country: TZA\n    short-code: 600747\n    channel-user: self.care.app\n    channel-password:
+    <your_channel_password>\n\n# PIN Management Configuration (MMPTelepin)\npin:\n
+    \ management:\n    endpoint: ${PIN_SERVICE_URL:http://10.222.15.134:8011/osb/services/PinManagement_2_0}\n
+    \   ws:\n      username: ${PIN_WS_USERNAME:live_mfs_app}\n      password: ${PIN_WS_PASSWORD:<your_password>}\n
+    \   consumer:\n      id: ${PIN_CONSUMER_ID:mfs_app_new}\n    country: ${PIN_COUNTRY:TZA}\n\n\nflowable:\n
+    \ enabled: true\n\ntransaction:\n  inquiry:\n    telepin:\n      endpoint: ${TRANSACTION_INQUIRY_URL:https://accessgwtest.tigo.co.tz:8443/SuperAppTransInquiry2TigoTQS}\n
+    \     type: MTPGGetSODetails\n    inquiryDelayMs: 500\n    inquiryMaxAttempts:
+    5\n\nMERCHANT_PREFIXES:\n  EAN: \"02501\"\n\nhandler:\n  management:\n    handler-id-prefix:
+    S\n    features-role-name: Merchant_Portal  # Role whose authorities define available
+    handler features\n    telepin:\n      create-account-service: axian-create-mfs-account\n
+    \     change-pin-service: axian-change-pin\n      disable-handler-service: axian-mmp-disable-terminal-user\n
+    \     transaction-query-service: axian-transaction-query-status\n      terminalType:
+    API\n      channelUser: mixx.merchant\n      channelUserPin: GoMixx@2026\n      serviceAccount:
+    25571123131\n      pin: 2026\n\n# ========================================================================\n#
+    NOTIFICATION SERVICE CONFIGURATION\n# ========================================================================\nnotification:\n
+    \ # SMS Channel Configuration (uses MPAY gateway)\n  sms:\n    enabled: ${NOTIFICATION_SMS_ENABLED:true}\n
+    \   url: ${SMS_SERVICE_URL:http://43.225.98.87/MESSAGING/URL/MSGURL.ASPX}\n\n
+    \ # Email Channel Configuration (uses MPAY gateway)\n  email:\n    enabled: ${NOTIFICATION_EMAIL_ENABLED:true}\n
+    \   url: ${EMAIL_SERVICE_URL:http://10.0.150.21:7034/api/EmailService}\n\n  #
+    Push Notification Channel (WebSocket/STOMP)\n  push:\n    enabled: ${NOTIFICATION_PUSH_ENABLED:true}\n\n
+    \ # Queue Processor — DISABLED in acquiring-api (runs in job-processor only)\n
+    \ queue:\n    processor:\n      enabled: false\n\n  # Default locale for template
+    resolution\n  default-locale: ${NOTIFICATION_DEFAULT_LOCALE:en}\n\n\n"
+kind: ConfigMap
+metadata:
+  creationTimestamp: null
+  name: dashboard-acquiring-api-config
+  namespace: test-mmp

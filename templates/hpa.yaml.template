@@ -1,0 +1,93 @@
+# ================================================================
+# FILE: k8s/hpa.yaml.template
+# Banking-grade HPA configuration.
+#
+# Philosophy:
+#   - Availability over cost — never sacrifice uptime to save pods
+#   - Scale up fast, scale down slow
+#   - Minimum 2 pods always — no single point of failure
+#   - Conservative thresholds — scale before you're in trouble
+#
+# Triggered by setting these in values.env:
+#   HPA_MIN              minimum pods (recommended: 2 for banking)
+#   HPA_MAX              maximum pods
+#   HPA_CPU_THRESHOLD    CPU % to trigger scale up (recommended: 60)
+#   HPA_MEM_THRESHOLD    memory % to trigger scale up (recommended: 75)
+# ================================================================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: $NAME-hpa
+  namespace: $NAMESPACE
+  labels:
+    app: $NAME
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: $NAME
+
+  minReplicas: $HPA_MIN   # never go below this — keep 2 for banking
+  maxReplicas: $HPA_MAX   # hard ceiling on pod count
+
+  metrics:
+
+  # Primary trigger: CPU
+  # Scale up when average CPU across all pods hits threshold.
+  # At 60% there is still headroom — pod won't be throttled mid-transaction.
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: $HPA_CPU_THRESHOLD
+
+  # Secondary trigger: Memory
+  # Scale up when memory hits threshold.
+  # Spring Boot services grow memory under load (caches, sessions, heap).
+  # HPA picks whichever metric requires MORE pods — both are always active.
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: $HPA_MEM_THRESHOLD
+
+  behavior:
+
+    scaleUp:
+      # React immediately to load — no stabilization delay on the way up.
+      # In banking a payment spike must be served, not queued.
+      stabilizationWindowSeconds: 120
+
+      policies:
+      # Add up to 2 pods per minute — fast enough to absorb spikes
+      # without spawning everything at once and stressing the DB.
+      - type: Pods
+        value: 2
+        periodSeconds: 60
+      # Also allow doubling pod count if spike is extreme.
+      # HPA picks whichever policy allows MORE pods.
+      - type: Percent
+        value: 100
+        periodSeconds: 60
+
+      # selectPolicy: Max means use whichever policy scales up faster
+      selectPolicy: Max
+
+    scaleDown:
+      # Wait 2 minutes of sustained low traffic before removing any pods.
+      # Banking traffic can spike suddenly — keep capacity warm.
+      # This prevents constant up/down flapping between transactions.
+      stabilizationWindowSeconds: 120
+
+      policies:
+      # Remove at most 1 pod every 2 minutes.
+      # Slow and cautious — a pod being removed is unavailable
+      # for in-flight requests during graceful shutdown.
+      - type: Pods
+        value: 1
+        periodSeconds: 120
+
+      selectPolicy: Min
+

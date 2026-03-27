@@ -1,0 +1,11 @@
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: $NAME-mapping
+  namespace: $NAMESPACE
+spec:
+  host: "*"
+  prefix: $PREFIX       # public URL path — what the browser sends
+  rewrite: $REWRITE     # what your app receives — almost always /
+  service: $NAME-service.test-mmp.svc.cluster.local:$PORT
+

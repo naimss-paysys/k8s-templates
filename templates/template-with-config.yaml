@@ -1,0 +1,145 @@
+# ================================================================
+# FILE: templates/template-with-config.yaml
+# For Spring Boot services that have a configmap.yaml
+# ================================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: $NAME
+  namespace: $NAMESPACE
+  labels:
+    app: $NAME
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: $NAME
+  template:
+    metadata:
+      labels:
+        app: $NAME
+    spec:
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: kubernetes.io/hostname
+                    operator: NotIn
+                    values:
+                      - eksa01-dev-cluster-md-0-jgw6t-fqvnv
+                      - eksa01-dev-cluster-md-0-jgw6t-z8sqz
+      imagePullSecrets:
+      - name: my-registry-secret
+      containers:
+
+      - name: $NAME
+        image: $IMAGE:$TAG
+        ports:
+        - containerPort: $PORT
+        env:
+        - name: SERVICE_NAME
+          value: $NAME
+        - name: APP_VERSION
+          value: "$TAG"
+        - name: CONTAINER_NAME
+          value: $NAME
+        - name: APP_ENVIRONMENT
+          value: $ENVIRONMENT
+        - name: SPRING_CONFIG_LOCATION
+          value: /app/config/application.yaml
+        - name: LOGGING_CONFIG
+          value: file:/app/config/logback.xml
+        envFrom:
+        - secretRef:
+            name: dashboard-application-secrets
+        resources:
+          requests:
+            cpu: $CPU_REQUEST
+            memory: $MEMORY_REQUEST
+          limits:
+            cpu: $CPU_LIMIT
+            memory: $MEMORY_LIMIT
+        volumeMounts:
+        - name: app-config
+          mountPath: /app/config/application.yaml
+          subPath: application.yaml
+        - name: shared-logback
+          mountPath: /app/config/logback.xml
+          subPath: logback.xml
+        - name: shared-logs
+          mountPath: /logs
+
+      - name: filebeat
+        image: docker.elastic.co/beats/filebeat:8.13.4
+        args: ["-c", "/etc/filebeat/filebeat.yml", "-e"]
+        env:
+        - name: ELK_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: elk-credentials
+              key: ELK_USERNAME
+        - name: ELK_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: elk-credentials
+              key: ELK_PASSWORD
+        - name: SERVICE_NAME
+          value: $NAME
+        - name: APP_VERSION
+          value: "$TAG"
+        - name: CONTAINER_NAME
+          value: $NAME
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+        volumeMounts:
+        - name: shared-filebeat-config
+          mountPath: /etc/filebeat/filebeat.yml
+          subPath: filebeat.yml
+        - name: shared-logs
+          mountPath: /logs
+          readOnly: true
+        - name: filebeat-registry
+          mountPath: /usr/share/filebeat/data
+
+      volumes:
+      - name: app-config
+        configMap:
+          name: $NAME-config
+      - name: shared-logback
+        configMap:
+          name: shared-logback
+      - name: shared-filebeat-config
+        configMap:
+          name: shared-filebeat-config
+      - name: shared-logs
+        emptyDir: {}
+      - name: filebeat-registry
+        emptyDir: {}
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: $NAME-service
+  namespace: $NAMESPACE
+spec:
+  selector:
+    app: $NAME
+  ports:
+  - port: $PORT
+    targetPort: $PORT
+  type: ClusterIP
