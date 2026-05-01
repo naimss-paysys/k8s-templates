@@ -219,7 +219,7 @@ EOF
 ### 1. Clone the repository
 
 ```bash
-git clone <repo-url> ~/k8s
+git clone https://github.com/naimss-paysys/k8s-templates.git ~/k8s
 cd ~/k8s
 chmod +x deploy.sh generate-configmap.sh restart-mpay.sh
 ```
