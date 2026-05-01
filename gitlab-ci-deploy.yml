@@ -1,0 +1,115 @@
+# ================================================================
+# KubeForge Deploy Stage — drop into .gitlab-ci.yml
+#
+# HOW IT WORKS:
+#   One pipeline variable COUNTRY controls which job runs.
+#   Set it in GitLab:  Settings → CI/CD → Variables → COUNTRY = tz
+#   To deploy Togo:    override COUNTRY = tg  when triggering pipeline
+#
+# Required CI/CD Variables (Settings → CI/CD → Variables):
+#   SSH_PRIVATE_KEY   — type: File  — private key for DEPLOY_HOST
+#   DEPLOY_USER       — SSH user    (e.g. admin-dnf)
+#   DEPLOY_HOST       — server IP / hostname
+#   K8S_DIR           — absolute path on host  (e.g. /home/admin-dnf/k8s)
+#   CI_RUNNER_TAG     — runner tag for deploy jobs
+#   SERVICES          — space-separated: "dashboard-acquiring-api dashboard-backoffice"
+#   COUNTRY           — "tz"  or  "tg"   ← this controls which job runs
+# ================================================================
+
+# ── Shared config all deploy jobs inherit ─────────────────────────
+.deploy-common:
+  stage: deploy
+  tags:
+    - ${CI_RUNNER_TAG}
+  extends: .common-rules
+  before_script:
+    - chmod 600 "$SSH_PRIVATE_KEY"
+    # Fail fast if required variables are missing
+    - |
+      for _v in CI_COMMIT_TAG DEPLOY_USER DEPLOY_HOST K8S_DIR SERVICES SSH_PRIVATE_KEY COUNTRY; do
+        [ -n "${!_v}" ] || { echo "  ERROR: $_v is not set — add it to CI/CD Variables"; exit 1; }
+      done
+    # Verify SSH reachable before starting the loop
+    - |
+      ssh -i "$SSH_PRIVATE_KEY" \
+          -o StrictHostKeyChecking=no \
+          -o ConnectTimeout=10 \
+          "$DEPLOY_USER@$DEPLOY_HOST" "echo '  SSH OK: $DEPLOY_HOST'" \
+        || { echo "  ERROR: Cannot reach $DEPLOY_USER@$DEPLOY_HOST"; exit 1; }
+  script:
+    - |
+      echo ""
+      echo "  ┌────────────────────────────────────────────────────"
+      echo "  │  KubeForge Pipeline Deploy"
+      echo "  │  Country  : $COUNTRY"
+      echo "  │  Tag      : $CI_COMMIT_TAG"
+      echo "  │  Host     : $DEPLOY_USER@$DEPLOY_HOST"
+      echo "  │  Services : $SERVICES"
+      echo "  └────────────────────────────────────────────────────"
+      echo ""
+
+      FAILED=""
+
+      for SERVICE in $SERVICES; do
+        echo "  ▶  $SERVICE  [$COUNTRY]  →  $CI_COMMIT_TAG"
+
+        set +e
+        ssh -i "$SSH_PRIVATE_KEY" \
+            -o StrictHostKeyChecking=no \
+            -o ConnectTimeout=15 \
+            -o ServerAliveInterval=30 \
+            -o ServerAliveCountMax=6 \
+            "$DEPLOY_USER@$DEPLOY_HOST" "
+          set -euo pipefail
+          cd $K8S_DIR
+
+          [ -d services/$SERVICE ] || {
+            echo '  ERROR: services/$SERVICE not found'
+            exit 1
+          }
+          [ -f services/$SERVICE/values.$COUNTRY.env ] || {
+            echo '  ERROR: values.$COUNTRY.env not found for $SERVICE'
+            echo '  Fix:  kubeforge $SERVICE --country $COUNTRY --init'
+            exit 1
+          }
+
+          sed -i 's|^TAG=.*|TAG=$CI_COMMIT_TAG|' services/$SERVICE/values.$COUNTRY.env
+          echo '  TAG=$CI_COMMIT_TAG  →  services/$SERVICE/values.$COUNTRY.env'
+
+          CI=true ./deploy.sh $SERVICE --country $COUNTRY
+        "
+        EXIT=$?
+        set -e
+
+        if [ $EXIT -eq 0 ]; then
+          echo "  ✔  OK: $SERVICE"
+        else
+          echo "  ✖  FAILED: $SERVICE (exit $EXIT)"
+          FAILED="$FAILED $SERVICE"
+        fi
+        echo ""
+      done
+
+      if [ -n "$FAILED" ]; then
+        echo "  ✖  Failed services:$FAILED"
+        exit 1
+      fi
+      echo "  ✔  All deployed — Tag=$CI_COMMIT_TAG  Country=$COUNTRY"
+
+# ── Tanzania — runs ONLY when COUNTRY=tz ─────────────────────────
+deploy-tz:
+  extends: .deploy-common
+  environment:
+    name: tanzania
+  rules:
+    - if: '$COUNTRY == "tz"'
+    - when: never
+
+# ── Togo — runs ONLY when COUNTRY=tg ─────────────────────────────
+deploy-tg:
+  extends: .deploy-common
+  environment:
+    name: togo
+  rules:
+    - if: '$COUNTRY == "tg"'
+    - when: never

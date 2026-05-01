@@ -1,13 +1,10 @@
 apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashboard-merchant-api-config-v3-1.0.22-tz
+  namespace: test-mmp
 data:
-  application.yaml: |+
-    # BANK_TRANSFER_URL
-    # WALLET_BALANCE_URL
-    # WALLET_ACCOUNT_STATUS_URL
-    # MPAY_URL
-    # EMAIL_SERVICE_URL
-    # TRANSACTION_INQUIRY_URL
-
+  application.yaml: |
     server:
       port: ${PORT:5502}
       max-http-request-header-size: 64KB
@@ -16,14 +13,14 @@ data:
           timeout: 5000
           cookie:
             secure: true
-
+    
     springfox.documentation.swagger.v2.path: /docs
     swagger:
       enabled: true
     ajaxRequestTime: 10000
     maxSize: 5242880
     # allowedHeaders and allowedOrigins must not be '*', when allowCredentials is true
-    allowedHeaders: 'Authorization,Content-Type,X-Requested-With,Accept,Origin,Access-Control-Allow-Origin,Access-Control-Allow-Credentials'
+    allowedHeaders: 'Authorization,Content-Type,X-Requested-With,Accept,Origin,Access-Control-Allow-Origin,Access-Control-Allow-Credentials,Channel'
     allowedOrigins: '*'  # Change this to your frontend's URL(s), comma-separated if multiple
     #logging:
     #  config: file:logback.xml
@@ -70,7 +67,7 @@ data:
         name: mms-dashboard
       servlet:
         multipart:
-
+    
           max-file-size: 10MB
           max-request-size: 10MB
       thymeleaf:
@@ -92,7 +89,7 @@ data:
       jackson:
         serialization:
           FAIL_ON_EMPTY_BEANS: false
-
+    
       hikari:
         pool-name: HikariPool
         maximum-pool-size: 10
@@ -103,13 +100,13 @@ data:
         leak-detection-threshold: 120000  # 2 minutes
         validation-timeout: 5000
         auto-commit: true
-
+    
           #url: jdbc:sqlserver://localhost:1433;instanceName=MSSQLSERVER;databaseName=MMSBackoffice_20210520
         #username: sk
         #password: waheed@1234
-
-
-
+    
+    
+    
       jpa:
         generate-ddl: false
         hibernate:
@@ -120,7 +117,7 @@ data:
             dialect: org.hibernate.dialect.PostgreSQLDialect
             id:
               new_generator_mappings: true
-
+    
     #  jpa:
     #    database-platform: org.hibernate.dialect.PostgreSQLDialect
     #    generate-ddl: true
@@ -133,7 +130,7 @@ data:
     #        jdbc:
     #          lob:
     #            non_contextual_creation: true
-
+    
     # Flowable BPM Configuration
     flowable:
       enabled: true
@@ -155,13 +152,13 @@ data:
       backoffice:
         key: 98a4aaaa-8de8-47fd-97cb-2d28415c2bf6
         secret: d41020e0-77d7-4f65-8132-3a17fc70bc35
-
+    
     token:
       store:
         eviction: 280000
         type: redis  # Changed from memcached to redis
         # Redis connection is configured in spring.redis section above
-
+    
     jasper:
       key: amFzcGVyYWRtaW46amFzcGVyYWRtaW4=
       endpoint:
@@ -169,7 +166,7 @@ data:
         user: http://10.0.70.52:8086/jasperserver/rest_v2/users/
     jasper_url: http://10.0.70.52:8086/jasperserver/flow.html?_flowId=searchFlow&j_username=
     refresh_time: 2000
-
+    
     #multipart:
     #    maxFileSize: 5Mb
     #    maxRequestSize: 5Mb
@@ -177,7 +174,7 @@ data:
       name: blacklistJwtCache
       timeout: 36000000 # 10 hours = 10 * 60 * 60 * 1000
     secret_key : "d4f12d6c8e9a9d0b"  #Should always be 16 alphanumeric characters
-
+    
     # JWT Configuration moved to the top of the file (line 36)
     # Using the value from line 36: expiration-ms: 86400000 (24 hours)
     #  | Duration   | Milliseconds (`expiration-ms`) |
@@ -188,18 +185,18 @@ data:
     #  | 1 hour     | 3600000                        |
     #  | 10 hours   | 36000000                       |
     #  | 24 hours   | 86400000                       |
-
+    
     security:
       login:
         max-failures: 5
         lock-duration-minutes: 1 # in minutes
     aggregator : Faisal Bank Limited
-
+    
     rate-limit:
       max-requests: 5 # MAX VALUE PERE REQUEST
       base-window-ms: 60000   # PER MINUTE
       penalty-ms: 10000        # 10 seconds PENDALITY FOR
-
+    
     management:
       health:
         ldap:
@@ -213,18 +210,18 @@ data:
           show-details: always
         service-status:
           enabled: true
-
+    
     backoffice:
       connect:
         timeout: 5000  # Connection timeout in milliseconds (5 seconds)
       read:
         timeout: 5000  # Read timeout in milliseconds (5 seconds)
       stan: 1  # STAN (System Trace Audit Number) initial value
-
+    
     two-fa:
       public-key-path: D:\keys\key-public.pem
       time-left: 60 # in seconds e.g. 60 secs
-
+    
     # Bank Transfer Configuration (Telepin/MMP Integration)
     bank:
       transfer:
@@ -234,12 +231,12 @@ data:
           terminalType: USD
           shortCode: 50111
           feeCheckOperation: 2022
-
-
+    
+    
     external-onboarding:
       identification: MSISDN
       maker: Labesh_Maker
-
+    
     service:
       url:
         queue: ${MPAY_URL:http://10.0.150.126:7033/acq/queueforwarding/}
@@ -248,37 +245,106 @@ data:
       retry:
         attempts: 3
         delay-ms: 1000
-
+    
     wallet:
       api:
         balance:
           endpoint: ${WALLET_BALANCE_URL:http://10.0.150.126:3011/osb/services/GetBalance_3_0}
+          consumer-id: MWTEST
+          username: mixx.merchant
+          password: GoMixx@2026
+          terminal-type: API
         account-status:
           endpoint: ${WALLET_ACCOUNT_STATUS_URL:http://10.0.150.126:3011/osb/services/ViewMFSAccountType_1_0}
-        username: live_mfs_app
-        password: <your_password>
-        consumer-id: mfs_app_new
+        username: test_mw_osb
+        password: tigo1234
+        changePinUsername: mw_ath_test
+        changePinPassword: TQjudc@lM$3Si
+        consumer-id: TIGO
         country: TZA
         short-code: 600747
         channel-user: self.care.app
         channel-password: <your_channel_password>
-
+    
     # Handler Management Configuration
     handler:
       management:
         handler-id-prefix: S
         features-role-name: Merchant_Portal  # Role whose authorities define available handler features
         telepin:
-          create-account-service: axian-create-mfs-account
+          create-account-service: axian-mmp-create-handler
           change-pin-service: axian-change-pin
           disable-handler-service: axian-mmp-disable-terminal-user
           transaction-query-service: axian-transaction-query-status
-          terminalType: API
+          terminalType: USD
           channelUser: mixx.merchant
           channelUserPin: GoMixx@2026
           serviceAccount: 25571123131
           pin: 2026
-
+          language: English
+          merchantSignup: 19
+          disable-consumer-id: MMP
+          disable-terminal-type: API
+    
+    # ===============================
+    # MPAY Service Configuration (Centralized)
+    # All Telepin/MPAY service names and credentials
+    # used by MpayServiceLayer are defined here.
+    # ===============================
+    mpay:
+      services:
+        initiate-rtp: axian-rtp-initiator
+        create-account: axian-mmp-create-handler
+        change-pin: axian-change-pin
+        change-pin-check: axian-change-pin-check
+        mpay-change-pin: axian-mmp-change-pin
+        send-sms: axian-send-sms
+        disable-handler: axian-mmp-disable-terminal-user
+        pin-validate: axian-mmp-pin-validation
+        transaction-query: axian-transaction-query-status
+        fee-check: "axian-payments-fee-check"
+        execute-payment: "axian-payments"
+        m2m-fee: "axian-mmp-fee-namecheck"
+        m2m-payment: "axian-send-money-staging"
+        rtp-payment: axian-biller-payment-api
+        cashout-fee: axian-mmp-cashout-fee
+        cashout-payment: axian-mmp-cashout-payment
+        transfer: axian-mmp-proxy-transfer
+        inquiry: axian-transaction-query-status
+        balance-inquiry: axian-check-balance-inquiry
+      wallet:
+        username: test_mw_osb
+        password: tigo1234
+        change-pin-username: mw_ath_test
+        change-pin-password: TQjudc@lM$3Si
+        consumer-id: TIGO
+        balance-consumer-id: MWTEST
+        channel-username: mixx.merchant
+        country: TZA
+      handler:
+        channel-user: mixx.merchant
+        channel-user-pin: GoMixx@2026
+        merchant-signup: "19"
+        language: English
+        disable-consumer-id: MMP
+        disable-terminal-type: API
+        terminal-type: USD
+        service-account: "25571123131"
+        pin: "2026"
+      payment:
+        m2m-terminal-type: USD
+      scheduled-payment:
+        consumer-id: mfs_app_new
+        channel-user: <channel_username>
+        channel-pass: <channel_password>
+        terminal-type: API
+        payment-type: PAYMENT_PROXY
+        balance:
+          consumer-id: MWTEST
+          channel-user: mixx.merchant
+          channel-pass: <channel_password>
+          terminal-type: API
+    
     # Scheduled Payment (Settlement) Configuration
     scheduled:
       payment:
@@ -294,11 +360,18 @@ data:
         payment-type: PAYMENT_PROXY
         # W2W Transfer Configuration
         w2w-shortcode: <w2w_shortcode>            # Update with actual W2W shortcode
+        # Balance Inquiry Configuration (for FULL and PERCENTAGE amount types)
+        balance:
+          service: axian-check-balance-inquiry
+          consumer-id: MWTEST
+          channel-user: mixx.merchant
+          channel-pass: <channel_password>       # Update with actual password
+          terminal-type: API
         # Processing Configuration
         batch-limit: 100                          # Max schedules to process per job run
         max-inquiry-retries: 3                    # Max inquiry retries before marking WAIT_FOR_ASYNC
         timezone: Africa/Dar_es_Salaam            # Default timezone for schedule calculations
-
+    
     transaction:
       inquiry:
         telepin:
@@ -306,12 +379,76 @@ data:
           type: MTPGGetSODetails
         inquiryDelayMs: 500
         inquiryMaxAttempts: 5
-
+    
     MERCHANT_PREFIXES:
       EAN: "02501"
-
-kind: ConfigMap
-metadata:
-  creationTimestamp: null
-  name: dashboard-merchant-api-config
-  namespace: test-mmp
+    
+    # ========================================================================
+    # NOTIFICATION SERVICE CONFIGURATION
+    # ========================================================================
+    notification:
+      # SMS Channel
+      sms:
+        enabled: ${NOTIFICATION_SMS_ENABLED:true}
+        url: ${SMS_SERVICE_URL:http://43.225.98.87/MESSAGING/URL/MSGURL.ASPX}
+    
+      # Email Channel
+      email:
+        enabled: ${NOTIFICATION_EMAIL_ENABLED:true}
+        url: ${EMAIL_SERVICE_URL:http://10.0.150.21:7034/api/EmailService}
+    
+      # Push Channel (WebSocket/STOMP) — merchant portal users real-time notifications
+      push:
+        enabled: ${NOTIFICATION_PUSH_ENABLED:true}
+        # This module listens for merchant push notifications from Redis
+        socket-listener: MERCHANT
+    
+      # Queue Processor — DISABLED in merchant-api (runs in job-processor only)
+      queue:
+        processor:
+          enabled: false
+        poll-interval-ms: ${NOTIFICATION_POLL_INTERVAL:5000}
+        batch-size: ${NOTIFICATION_BATCH_SIZE:50}
+        stuck-check-interval-ms: 120000
+    
+      retry:
+        max-attempts: ${NOTIFICATION_MAX_RETRIES:3}
+        base-delay-seconds: 30
+    
+      stuck-threshold-minutes: 5
+      default-locale: ${NOTIFICATION_DEFAULT_LOCALE:en}
+    
+    payment:
+      cashout:
+        shortcode: "50010"
+      m2m:
+        shortcode: "50001"
+        terminalType: USD
+        execute:
+          service: "axian-send-money-staging"
+        fee:
+          service: "axian-mmp-fee-namecheck"
+    
+      fee-check:
+        service: "axian-payments-fee-check"
+      execute:
+        service: "axian-payments"
+    
+    
+    external-api:
+    
+      requests:
+        engrafi:
+          tran-type: "axian-engrafi-staging"
+        account-status:
+          tran-type: "axian-mmp-get-user-status"
+        balance-inquiry:
+          tran-type: "axian-check-balance-inquiry"
+    
+    # Request body field decryption
+    decryption:
+      enabled: true
+      fields: sourcePIN,pin,password,oldPassword,newPassword,confirmPassword,newPin,currentPin,confirmPin
+      excluded-path-prefixes:       # path prefixes to skip decryption
+      #  - /rest/public
+      #  - /actuator

@@ -1,12 +1,12 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: queue-handler-config
+  name: queue-handler-config-v1-1.0.3
   namespace: test-mmp
 data:
   application.yaml: |
     debug: false
-
+    
     logging:
       config: file:logback.xml
       level:
@@ -14,7 +14,7 @@ data:
           hibernate:
             SQL: TRACE
             type.descriptor.sql.BasicBinder: TRACE
-
+    
     queue:
       config:
         host: mpay-rabbit.test-mmp.svc.cluster.local
@@ -38,11 +38,11 @@ data:
           forwarders:
             from: AXIAN-WS-H-IN
             to: NBPL-ISO-IN,NBPL-WS-H-IN,NBPL-1L-H-IN
-
+    
     cache:
       name: requestCache
       expiry: 600000
-
+    
     spring:
       mandatoryFileEncoding: UTF-8
       http:

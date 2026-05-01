@@ -1,7 +1,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: dashboard-acquiring-api-config-v3-1.0.21-tz
+  name: dashboard-acquiring-api-config-v3-1.0.20-tz
   namespace: test-mmp
 data:
   application.yaml: |

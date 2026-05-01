@@ -5,20 +5,29 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: $NAME
+  name: $SERVICE_NAME
   namespace: $NAMESPACE
   labels:
-    app: $NAME
+    app: $SERVICE_NAME
 spec:
-  replicas: 1
+  replicas: $REPLICAS
   selector:
     matchLabels:
-      app: $NAME
+      app: $SERVICE_NAME
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1        # spin up 1 extra pod before killing any old one
+      maxUnavailable: 0  # never reduce below desired count during rollout
   template:
     metadata:
       labels:
-        app: $NAME
+        app: $SERVICE_NAME
     spec:
+      hostAliases:
+        - ip: "$HOST_ALIAS_IP"
+          hostnames:
+            - "$AMBASSADOR_HOST"
       affinity:
         nodeAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
@@ -31,25 +40,54 @@ spec:
                       - eksa01-dev-cluster-md-0-jgw6t-z8sqz
       imagePullSecrets:
       - name: my-registry-secret
+      initContainers:
+        - name: trust-cert
+          image: eclipse-temurin:17-jre
+          command:
+            - sh
+            - -c
+            - |
+
+              echo "Copy default cacerts"
+              cp $JAVA_HOME/lib/security/cacerts /work/cacerts
+              echo "Import certificate"
+              keytool -importcert \
+                -alias mixxmmp \
+                -file /certs/fullchain.crt \
+                -keystore /work/cacerts \
+                -storepass changeit \
+                -noprompt
+
+              echo "Cert trusted successfully"
+              echo "Verifying cert"
+              keytool -list -keystore /work/cacerts -storepass changeit | grep mixxmmp
+
+          volumeMounts:
+            - name: tls-cert
+              mountPath: /certs
+            - name: java-cacerts
+              mountPath: /work
       containers:
 
-      - name: $NAME
-        image: $IMAGE:$TAG
+      - name: $SERVICE_NAME
+        image: MixxMMP-registry-test.tigo.co.tz/$IMAGE:$TAG
         ports:
         - containerPort: $PORT
         env:
         - name: SERVICE_NAME
-          value: $NAME
+          value: $SERVICE_NAME
         - name: APP_VERSION
           value: "$TAG"
         - name: CONTAINER_NAME
-          value: $NAME
+          value: $SERVICE_NAME
         - name: APP_ENVIRONMENT
           value: $ENVIRONMENT
         - name: SPRING_CONFIG_LOCATION
           value: /app/config/application.yaml
         - name: LOGGING_CONFIG
           value: file:/app/config/logback.xml
+        - name: JAVA_TOOL_OPTIONS
+          value: "-Djavax.net.ssl.trustStore=/etc/ssl/cacerts -Djavax.net.ssl.trustStorePassword=changeit"
         envFrom:
         - secretRef:
             name: dashboard-application-secrets
@@ -61,6 +99,13 @@ spec:
             cpu: $CPU_LIMIT
             memory: $MEMORY_LIMIT
         volumeMounts:
+        - name: storage
+          mountPath: /data/documents
+        - name: java-cacerts
+          mountPath: /etc/ssl
+        - name: tls-cert
+          mountPath: /certs
+          readOnly: true
         - name: app-config
           mountPath: /app/config/application.yaml
           subPath: application.yaml
@@ -85,11 +130,11 @@ spec:
               name: elk-credentials
               key: ELK_PASSWORD
         - name: SERVICE_NAME
-          value: $NAME
+          value: $SERVICE_NAME
         - name: APP_VERSION
           value: "$TAG"
         - name: CONTAINER_NAME
-          value: $NAME
+          value: $SERVICE_NAME
         - name: NODE_NAME
           valueFrom:
             fieldRef:
@@ -116,9 +161,17 @@ spec:
           mountPath: /usr/share/filebeat/data
 
       volumes:
+      - name: storage
+        persistentVolumeClaim:
+            claimName: file-storage
+      - name: java-cacerts
+        emptyDir: {}
+      - name: tls-cert
+        secret:
+          secretName: mixxmmp-tls-secret
       - name: app-config
         configMap:
-          name: $NAME-config
+          name: $CONFIGMAP_FULL_NAME
       - name: shared-logback
         configMap:
           name: shared-logback
@@ -134,12 +187,13 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: $NAME-service
+  name: $SERVICE_NAME-service
   namespace: $NAMESPACE
 spec:
   selector:
-    app: $NAME
+    app: $SERVICE_NAME
   ports:
   - port: $PORT
     targetPort: $PORT
   type: ClusterIP
+

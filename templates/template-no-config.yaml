@@ -5,19 +5,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: $NAME
+  name: $SERVICE_NAME
   namespace: $NAMESPACE
   labels:
-    app: $NAME
+    app: $SERVICE_NAME
 spec:
-  replicas: 1
+  replicas: $REPLICAS
   selector:
     matchLabels:
-      app: $NAME
+      app: $SERVICE_NAME
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
   template:
     metadata:
       labels:
-        app: $NAME
+        app: $SERVICE_NAME
     spec:
       affinity:
         nodeAffinity:
@@ -33,17 +38,17 @@ spec:
       - name: my-registry-secret
       containers:
 
-      - name: $NAME
-        image: $IMAGE:$TAG
+      - name: $SERVICE_NAME
+        image: MixxMMP-registry-test.tigo.co.tz/$IMAGE:$TAG
         ports:
         - containerPort: $PORT
         env:
         - name: SERVICE_NAME
-          value: $NAME
+          value: $SERVICE_NAME
         - name: APP_VERSION
           value: "$TAG"
         - name: CONTAINER_NAME
-          value: $NAME
+          value: $SERVICE_NAME
         - name: APP_ENVIRONMENT
           value: $ENVIRONMENT
         envFrom:
@@ -75,11 +80,11 @@ spec:
               name: elk-credentials
               key: ELK_PASSWORD
         - name: SERVICE_NAME
-          value: $NAME
+          value: $SERVICE_NAME
         - name: APP_VERSION
           value: "$TAG"
         - name: CONTAINER_NAME
-          value: $NAME
+          value: $SERVICE_NAME
         - name: NODE_NAME
           valueFrom:
             fieldRef:
@@ -121,11 +126,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: $NAME-service
+  name: $SERVICE_NAME-service
   namespace: $NAMESPACE
 spec:
   selector:
-    app: $NAME
+    app: $SERVICE_NAME
   ports:
   - port: $PORT
     targetPort: $PORT

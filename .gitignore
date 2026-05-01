@@ -1,0 +1,32 @@
+# ── Secrets ────────────────────────────────────────────────────────
+# Any file with "secret" in the name — catches application-secrets.yaml,
+# frontend-secrets.yaml, and anything added in future
+*secret*.yaml
+*secret*.json
+*secret*.env
+
+# ── Country override env files (NAMESPACE + TAG, keep private) ─────
+# Comment this block out if you intentionally track values.*.env files
+# values.*.env
+
+# ── Generated temp files (kubeforge mid-run artifacts) ─────────────
+configmap.new.yaml
+configmap.*.new.yaml
+
+# ── Backup files ────────────────────────────────────────────────────
+*.bkp
+*-backup
+*-bkp
+*.orig
+*.bak
+
+# ── Editor artifacts ────────────────────────────────────────────────
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# ── OS artifacts ────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db

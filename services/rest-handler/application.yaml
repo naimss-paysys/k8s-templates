@@ -1,0 +1,86 @@
+logging:
+  config: file:/app/logback.xml
+
+certificate:
+  require: false
+
+server:
+  port: 8081
+
+hooks:
+  file: /app/hooks.jar
+  after:
+    parsing-parameters: com.paysyslabs.bootstrap.rest.hook.impl.AfterParsingParametersHookImpl
+    response: com.paysyslabs.bootstrap.rest.hook.impl.AfterResponseHookImpl
+
+1link:
+  service:
+    userid: NBPNBP1
+    password: ${LINK_PASSWORD}
+    signaturekey: ${LINK_SIGNATUREKEY}
+    clientid: 1LINKUBPS1
+    channelid: 00000008
+
+pinblock-key: B319B9761F314089B319B9761F314089
+
+service:
+  endpoint: acq
+  client:
+    unsafe: true
+  timeout:
+    connect: 15000
+    read: 30000
+  concurrency:
+    maxtotal: 200
+    maxperroute: 100
+  queue:
+    workers: 50
+    request: AXIAN-WS-H-IN
+    result: AXIAN-WS-H-OUT
+    saf: SAF-HTTP-CACHED
+
+queue:
+  config:
+    host: mpay-rabbit.test-mmp.svc.cluster.local
+    port: 5672
+    username: mpayadmin
+    password: ${RABBITMQ_PASSWORD}
+    heartbeat: 10
+    retry.interval: 10
+    prefetch.count: 1
+    auto.ack: false
+
+spring:
+  mandatoryFileEncoding: UTF-8
+  http:
+    encoding:
+      charset: UTF-8
+      enabled: true
+  datasource:
+    type: com.zaxxer.hikari.HikariDataSource
+    driver-class-name: org.postgresql.Driver
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    sqlScriptEncoding: UTF-8
+    tomcat.connection-properties: useUnicode=yes;characterEncoding=utf-8;
+    hikari:
+      connection-test-query: SELECT 1
+      minimum-idle: 8
+      maximum-pool-size: 24
+      pool-name: sql-pool
+      auto-commit: true
+      max-lifetime: 1800000
+      leak-detection-threshold: 60000
+  jpa:
+    show-sql: true
+    generate-ddl: false
+    open-in-view: false
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+        id.new_generator_mappings: false

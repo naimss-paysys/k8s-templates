@@ -1,24 +1,25 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: rest-handler-config
+  name: rest-handler-config-v1-1.0.4
   namespace: test-mmp
 data:
   application.yaml: |
     logging:
       config: file:/app/logback.xml
-
+    
     certificate:
       require: false
-
+    
     server:
       port: 8081
-
+    
     hooks:
       file: /app/hooks.jar
       after:
         parsing-parameters: com.paysyslabs.bootstrap.rest.hook.impl.AfterParsingParametersHookImpl
         response: com.paysyslabs.bootstrap.rest.hook.impl.AfterResponseHookImpl
+    
     1link:
       service:
         userid: NBPNBP1
@@ -26,9 +27,9 @@ data:
         signaturekey: ${LINK_SIGNATUREKEY}
         clientid: 1LINKUBPS1
         channelid: 00000008
-
+    
     pinblock-key: B319B9761F314089B319B9761F314089
-
+    
     service:
       endpoint: acq
       client:
@@ -40,11 +41,11 @@ data:
         maxtotal: 200
         maxperroute: 100
       queue:
-        workers: 1
+        workers: 50
         request: AXIAN-WS-H-IN
         result: AXIAN-WS-H-OUT
         saf: SAF-HTTP-CACHED
-
+    
     queue:
       config:
         host: mpay-rabbit.test-mmp.svc.cluster.local
@@ -55,7 +56,7 @@ data:
         retry.interval: 10
         prefetch.count: 1
         auto.ack: false
-
+    
     spring:
       mandatoryFileEncoding: UTF-8
       http:
@@ -90,5 +91,3 @@ data:
             dialect: org.hibernate.dialect.PostgreSQLDialect
             format_sql: true
             id.new_generator_mappings: false
-
-

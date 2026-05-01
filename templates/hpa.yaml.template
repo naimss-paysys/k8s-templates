@@ -17,15 +17,15 @@
 apiVersion: autoscaling/v2
 kind: HorizontalPodAutoscaler
 metadata:
-  name: $NAME-hpa
+  name: $SERVICE_NAME-hpa
   namespace: $NAMESPACE
   labels:
-    app: $NAME
+    app: $SERVICE_NAME
 spec:
   scaleTargetRef:
     apiVersion: apps/v1
     kind: Deployment
-    name: $NAME
+    name: $SERVICE_NAME
 
   minReplicas: $HPA_MIN   # never go below this — keep 2 for banking
   maxReplicas: $HPA_MAX   # hard ceiling on pod count
@@ -58,7 +58,7 @@ spec:
     scaleUp:
       # React immediately to load — no stabilization delay on the way up.
       # In banking a payment spike must be served, not queued.
-      stabilizationWindowSeconds: 120
+      stabilizationWindowSeconds: 30
 
       policies:
       # Add up to 2 pods per minute — fast enough to absorb spikes
@@ -79,7 +79,7 @@ spec:
       # Wait 2 minutes of sustained low traffic before removing any pods.
       # Banking traffic can spike suddenly — keep capacity warm.
       # This prevents constant up/down flapping between transactions.
-      stabilizationWindowSeconds: 120
+      stabilizationWindowSeconds: 30
 
       policies:
       # Remove at most 1 pod every 2 minutes.
@@ -87,7 +87,7 @@ spec:
       # for in-flight requests during graceful shutdown.
       - type: Pods
         value: 1
-        periodSeconds: 120
+        periodSeconds: 30
 
       selectPolicy: Min
 

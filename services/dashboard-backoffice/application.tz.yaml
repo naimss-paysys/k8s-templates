@@ -1,5 +1,14 @@
+# BANK_TRANSFER_URL
+# BILL_PAYMENT_URL
+# WALLET_BALANCE_URL
+# WALLET_ACCOUNT_STATUS_URL
+# MPAY_URL
+# EMAIL_SERVICE_URL
+# TRANSACTION_INQUIRY_URL
+
+
 server:
-  port: ${PORT:5502}
+  port: ${PORT:5501}
   max-http-request-header-size: 64KB
   servlet:
     session:
@@ -15,8 +24,8 @@ maxSize: 5242880
 # allowedHeaders and allowedOrigins must not be '*', when allowCredentials is true
 allowedHeaders: 'Authorization,Content-Type,X-Requested-With,Accept,Origin,Access-Control-Allow-Origin,Access-Control-Allow-Credentials,Channel'
 allowedOrigins: '*'  # Change this to your frontend's URL(s), comma-separated if multiple
-#logging:
-#  config: file:logback.xml
+logging:
+  config: file:logback.xml
 application:
   carriers:
     allowed: 030,031,032,033,034,035,036
@@ -38,7 +47,7 @@ jwt:
   # 43200000  = 12 hours
   # 604800000 = 7 days
 spring:
-  # Redis Configuration for JWT Token Caching
+    # Redis Configuration for JWT Token Caching
   redis:
     host: ${REDIS_HOST:10.0.150.126}
     port: 6379
@@ -67,7 +76,7 @@ spring:
     cache: false
   jmx:
     enabled: false
-  #datasource:
+    #datasource:
     #type: com.zaxxer.hikari.HikariDataSource
     #driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
     #url: jdbc:sqlserver://10.0.150.18:1440;instanceName=SQLSERVER;databaseName=acquiring-backoffice-development;encrypt=true;trustServerCertificate=true;
@@ -94,7 +103,7 @@ spring:
     validation-timeout: 5000
     auto-commit: true
 
-      #url: jdbc:sqlserver://localhost:1433;instanceName=MSSQLSERVER;databaseName=MMSBackoffice_20210520
+    #url: jdbc:sqlserver://localhost:1433;instanceName=MSSQLSERVER;databaseName=MMSBackoffice_20210520
     #username: sk
     #password: waheed@1234
 
@@ -111,6 +120,12 @@ spring:
         id:
           new_generator_mappings: true
 
+  # Liquibase Configuration
+  # Auto-run disabled — run migrations explicitly via: mvn liquibase:update
+  liquibase:
+    enabled: false
+    placeholder-replacement: false
+
 #  jpa:
 #    database-platform: org.hibernate.dialect.PostgreSQLDialect
 #    generate-ddl: true
@@ -123,10 +138,6 @@ spring:
 #        jdbc:
 #          lob:
 #            non_contextual_creation: true
-
-# Flowable BPM Configuration
-flowable:
-  enabled: true
 dashboard:
   type: BACKOFFICE
   api:
@@ -137,9 +148,9 @@ page:
 email:
   from_name: paysyslabs
   from_email: watcher@paysyslabs.com
-  url: ${EMAIL_SERVICE_URL:http://10.0.150.21:7034/api/EmailService}
+  url: ${EMAIL_SERVICE_URL:http://10.0.150.16:7034/api/EmailService}
   change:
-    password_backoffice: http://10.0.150.16:3001
+    password_backoffice: http://10.0.150.16:3000
     password_portal: http://localhost:6097
 user:
   backoffice:
@@ -180,6 +191,7 @@ secret_key : "d4f12d6c8e9a9d0b"  #Should always be 16 alphanumeric characters
 #  | 24 hours   | 86400000                       |
 
 security:
+#  enabled: false
   login:
     max-failures: 5
     lock-duration-minutes: 1 # in minutes
@@ -189,6 +201,10 @@ rate-limit:
   max-requests: 5 # MAX VALUE PERE REQUEST
   base-window-ms: 60000   # PER MINUTE
   penalty-ms: 10000        # 10 seconds PENDALITY FOR
+
+file:
+  upload:
+    upload-dir: /data/documents/
 
 management:
   health:
@@ -204,32 +220,57 @@ management:
     service-status:
       enabled: true
 
-backoffice:
-  connect:
-    timeout: 5000  # Connection timeout in milliseconds (5 seconds)
-  read:
-    timeout: 5000  # Read timeout in milliseconds (5 seconds)
-  stan: 1  # STAN (System Trace Audit Number) initial value
 
-two-fa:
-  public-key-path: D:\keys\key-public.pem
-  time-left: 60 # in seconds e.g. 60 secs
 
-# Bank Transfer Configuration (Telepin/MMP Integration)
-bank:
-  transfer:
+# Pagination configuration
+pagination:
+  default-page-size: 10
+
+# ModelMapper configuration
+modelmapper:
+  default-strategy: STANDARD  # Options: STRICT, STANDARD, LOOSE
+  skip-null-values: false     # Set true for partial update scenarios
+
+qr:
+  image-size: 300
+  mid-length: 15
+
+# Bill Payment External API Configuration
+bill:
+  payment:
     telepin:
-      endpoint: ${BANK_TRANSFER_URL:http://10.0.150.126:3011/TigoPaymentGateway_1_2}
-      consumerId: mfs_app_new
-      terminalType: USD
-      shortCode: 50111
-      feeCheckOperation: 2022
-
+      # Base endpoint
+      endpoint: ${BILL_PAYMENT_URL:http://10.0.150.126:3011/TigoPaymentGateway_1_2}
+      
+      # Authentication credentials
+      consumer.id: mfs_app_new
+      channel.user: 255630
+      channel.pass: 3000
+      
+      # Terminal configuration
+      terminal.type: USD
+      
+      # Default source wallet details
+      source.msisdn: 255654949430
+      source.pin: '****'
+      
+      # Operation endpoints (p parameter)
+      operations:
+        bill-query: 2136          # Bill inquiry
+        calculate-fee: 2137       # Government fee calculation
+        bill-payment: 2022        # Bill payment execution
+        government-payment: 1945  # Government payment execution
+      
+      # Timeout and retry configuration
+      timeout: 30000  # 30 seconds
+      retry:
+        max-attempts: 3
+        delay-ms: 1000
 
 external-onboarding:
   identification: MSISDN
   maker: Labesh_Maker
-
+# MPAY Service Configuration
 service:
   url:
     queue: ${MPAY_URL:http://10.0.150.126:7033/acq/queueforwarding/}
@@ -239,131 +280,43 @@ service:
     attempts: 3
     delay-ms: 1000
 
+flowable:
+  enabled: true
+
+backoffice:
+  stan: 1
+  connect:
+    timeout: 3000000
+  read:
+    timeout: 3000000
+
 wallet:
   api:
     balance:
-      endpoint: ${WALLET_BALANCE_URL:http://10.0.150.126:3011/osb/services/GetBalance_3_0}
-      consumer-id: MWTEST
-      username: mixx.merchant
-      password: GoMixx@2026
-      terminal-type: API
+      endpoint: ${WALLET_BALANCE_URL:http://10.222.15.134:8011/osb/services/GetBalance_3_0}
     account-status:
-      endpoint: ${WALLET_ACCOUNT_STATUS_URL:http://10.0.150.126:3011/osb/services/ViewMFSAccountType_1_0}
+      endpoint: ${WALLET_ACCOUNT_STATUS_URL:http://10.222.15.134:8011/osb/services/ViewMFSAccountType_1_0}
     username: test_mw_osb
-    password: tigo1234
-    changePinUsername: mw_ath_test
-    changePinPassword: TQjudc@lM$3Si
+    password: tigo1234  # TODO: Update with actual password
     consumer-id: TIGO
     country: TZA
     short-code: 600747
     channel-user: self.care.app
-    channel-password: <your_channel_password>
+    channel-password: password  # TODO: Update with actual password
 
-# Handler Management Configuration
-handler:
-  management:
-    handler-id-prefix: S
-    features-role-name: Merchant_Portal  # Role whose authorities define available handler features
+two-fa:
+  time-left: 300 # QR code expiration time in seconds (5 minutes)
+
+bank:
+  transfer:
     telepin:
-      create-account-service: axian-mmp-create-handler
-      change-pin-service: axian-change-pin
-      disable-handler-service: axian-mmp-disable-terminal-user
-      transaction-query-service: axian-transaction-query-status
+      endpoint: ${BANK_TRANSFER_URL:http://10.222.15.134:8011/TigoPaymentGateway_1_2}
+      consumerId: mfs_app_new
       terminalType: USD
-      channelUser: mixx.merchant
-      channelUserPin: GoMixx@2026
-      serviceAccount: 25571123131
-      pin: 2026
-      language: English
-      merchantSignup: 19
-      disable-consumer-id: MMP
-      disable-terminal-type: API
+      shortCode: 50111
+      feeCheckOperation: 2022
+      paymentOperation: 7005
 
-# ===============================
-# MPAY Service Configuration (Centralized)
-# All Telepin/MPAY service names and credentials
-# used by MpayServiceLayer are defined here.
-# ===============================
-mpay:
-  services:
-    initiate-rtp: axian-rtp-initiator
-    create-account: axian-mmp-create-handler
-    change-pin: axian-change-pin
-    change-pin-check: axian-change-pin-check
-    mpay-change-pin: axian-mmp-change-pin
-    send-sms: axian-send-sms
-    disable-handler: axian-mmp-disable-terminal-user
-    pin-validate: axian-mmp-pin-validation
-    transaction-query: axian-transaction-query-status
-    fee-check: "axian-payments-fee-check"
-    execute-payment: "axian-payments"
-    m2m-fee: "axian-mmp-fee-namecheck"
-    m2m-payment: "axian-send-money-staging"
-    rtp-payment: axian-biller-payment-api
-    cashout-fee: axian-mmp-cashout-fee
-    cashout-payment: axian-mmp-cashout-payment
-    transfer: axian-mmp-proxy-transfer
-    inquiry: axian-transaction-query-status
-    balance-inquiry: axian-check-balance-inquiry
-  wallet:
-    username: test_mw_osb
-    password: tigo1234
-    change-pin-username: mw_ath_test
-    change-pin-password: TQjudc@lM$3Si
-    consumer-id: TIGO
-    balance-consumer-id: MWTEST
-    channel-username: mixx.merchant
-    country: TZA
-  handler:
-    channel-user: mixx.merchant
-    channel-user-pin: GoMixx@2026
-    merchant-signup: "19"
-    language: English
-    disable-consumer-id: MMP
-    disable-terminal-type: API
-    terminal-type: USD
-    service-account: "25571123131"
-    pin: "2026"
-  payment:
-    m2m-terminal-type: USD
-  scheduled-payment:
-    consumer-id: mfs_app_new
-    channel-user: <channel_username>
-    channel-pass: <channel_password>
-    terminal-type: API
-    payment-type: PAYMENT_PROXY
-    balance:
-      consumer-id: MWTEST
-      channel-user: mixx.merchant
-      channel-pass: <channel_password>
-      terminal-type: API
-
-# Scheduled Payment (Settlement) Configuration
-scheduled:
-  payment:
-    # Telepin Service Names
-    service:
-      transfer: axian-mmp-proxy-transfer     # Transfer initiation service
-      inquiry: axian-transaction-query-status # Transaction status inquiry service
-    # Telepin Authentication
-    consumer-id: mfs_app_new
-    channel-user: <channel_username>         # Update with actual channel username
-    channel-pass: <channel_password>         # Update with actual channel password
-    terminal-type: API
-    payment-type: PAYMENT_PROXY
-    # W2W Transfer Configuration
-    w2w-shortcode: <w2w_shortcode>            # Update with actual W2W shortcode
-    # Balance Inquiry Configuration (for FULL and PERCENTAGE amount types)
-    balance:
-      service: axian-check-balance-inquiry
-      consumer-id: MWTEST
-      channel-user: mixx.merchant
-      channel-pass: <channel_password>       # Update with actual password
-      terminal-type: API
-    # Processing Configuration
-    batch-limit: 100                          # Max schedules to process per job run
-    max-inquiry-retries: 3                    # Max inquiry retries before marking WAIT_FOR_ASYNC
-    timezone: Africa/Dar_es_Salaam            # Default timezone for schedule calculations
 
 transaction:
   inquiry:
@@ -376,9 +329,6 @@ transaction:
 MERCHANT_PREFIXES:
   EAN: "02501"
 
-# ========================================================================
-# NOTIFICATION SERVICE CONFIGURATION
-# ========================================================================
 notification:
   # SMS Channel
   sms:
@@ -390,19 +340,19 @@ notification:
     enabled: ${NOTIFICATION_EMAIL_ENABLED:true}
     url: ${EMAIL_SERVICE_URL:http://10.0.150.21:7034/api/EmailService}
 
-  # Push Channel (WebSocket/STOMP) — merchant portal users real-time notifications
+  # Push Channel (WebSocket/STOMP) — backoffice users real-time notifications
   push:
     enabled: ${NOTIFICATION_PUSH_ENABLED:true}
-    # This module listens for merchant push notifications from Redis
-    socket-listener: MERCHANT
+    socket-listener: BACKOFFICE
 
-  # Queue Processor — DISABLED in merchant-api (runs in job-processor only)
+  # Queue Processor — DISABLED in backoffice (runs in job-processor only)
   queue:
     processor:
       enabled: false
-    poll-interval-ms: ${NOTIFICATION_POLL_INTERVAL:5000}
-    batch-size: ${NOTIFICATION_BATCH_SIZE:50}
+      poll-interval-ms: ${NOTIFICATION_POLL_INTERVAL:5000}
+      batch-size: ${NOTIFICATION_BATCH_SIZE:50}
     stuck-check-interval-ms: 120000
+    default-locale: ${NOTIFICATION_DEFAULT_LOCALE:en}
 
   retry:
     max-attempts: ${NOTIFICATION_MAX_RETRIES:3}
@@ -411,32 +361,22 @@ notification:
   stuck-threshold-minutes: 5
   default-locale: ${NOTIFICATION_DEFAULT_LOCALE:en}
 
-payment:
-  cashout:
-    shortcode: "50010"
-  m2m:
-    shortcode: "50001"
-    terminalType: USD
-    execute:
-      service: "axian-send-money-staging"
-    fee:
-      service: "axian-mmp-fee-namecheck"
-
-  fee-check:
-    service: "axian-payments-fee-check"
-  execute:
-    service: "axian-payments"
-
 
 external-api:
 
   requests:
     engrafi:
       tran-type: "axian-engrafi-staging"
-    account-status:
-      tran-type: "axian-mmp-get-user-status"
-    balance-inquiry:
-      tran-type: "axian-check-balance-inquiry"
+
+payment:
+  cashout:
+    shortcode: "50010"
+  m2m:
+    shortcode: "50001"
+    execute:
+      service: "axian-send-money"
+    fee:
+      service: "axian-mmp-fee-namecheck"
 
 # Request body field decryption
 decryption:
