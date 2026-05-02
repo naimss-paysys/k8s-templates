@@ -54,8 +54,8 @@ validate_configs() {
 
   section_header "Pre-flight YAML Validation"
 
-  if [ "${TEMPLATE_LABEL:-}" == "with-config" ] && [ -f "${SERVICE_DIR}/configmap.yaml" ]; then
-    validate_yaml "${SERVICE_DIR}/configmap.yaml" "configmap.yaml" || failed=true
+  if [ "${TEMPLATE_LABEL:-}" == "with-config" ] && [ -f "${CONFIGMAP_FILE:-}" ]; then
+    validate_yaml "$CONFIGMAP_FILE" "configmap (generated)" || failed=true
   fi
 
   if [ "${HAS_MAPPING:-}" == "true" ]; then

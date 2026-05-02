@@ -9,6 +9,9 @@
 # Comment this block out if you intentionally track values.*.env files
 # values.*.env
 
+# ── Generated configmaps (auto-created by kubeforge, not source files) ─
+services/*/generated/
+
 # ── Generated temp files (kubeforge mid-run artifacts) ─────────────
 configmap.new.yaml
 configmap.*.new.yaml
@@ -19,6 +22,9 @@ configmap.*.new.yaml
 *-bkp
 *.orig
 *.bak
+
+# ── KubeForge local config (default country — personal, not committed) ─
+.kubeforge
 
 # ── Editor artifacts ────────────────────────────────────────────────
 *.swp

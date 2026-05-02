@@ -13,7 +13,7 @@
 #   K8S_DIR           — absolute path on host  (e.g. /home/admin-dnf/k8s)
 #   CI_RUNNER_TAG     — runner tag for deploy jobs
 #   SERVICES          — space-separated: "dashboard-acquiring-api dashboard-backoffice"
-#   COUNTRY           — "tz"  or  "tg"   ← this controls which job runs
+#   COUNTRY           — "tz"  or  "tg"   ← controls which job runs
 # ================================================================
 
 # ── Shared config all deploy jobs inherit ─────────────────────────
@@ -63,28 +63,47 @@
           set -euo pipefail
           cd $K8S_DIR
 
+          # ── Validate service directory ──────────────────────────
           [ -d services/$SERVICE ] || {
             echo '  ERROR: services/$SERVICE not found'
             exit 1
           }
-          [ -f services/$SERVICE/values.$COUNTRY.env ] || {
-            echo '  ERROR: values.$COUNTRY.env not found for $SERVICE'
-            echo '  Fix:  kubeforge $SERVICE --country $COUNTRY --init'
+
+          # ── Validate service.yaml exists ────────────────────────
+          [ -f services/$SERVICE/service.yaml ] || {
+            echo '  ERROR: service.yaml not found for $SERVICE'
+            echo '         Run: kubeforge $SERVICE --country $COUNTRY --init'
             exit 1
           }
 
-          sed -i 's|^TAG=.*|TAG=$CI_COMMIT_TAG|' services/$SERVICE/values.$COUNTRY.env
-          echo '  TAG=$CI_COMMIT_TAG  →  services/$SERVICE/values.$COUNTRY.env'
+          # ── Validate country is defined in service.yaml ─────────
+          _cnt=\$(yq '.countries.$COUNTRY' services/$SERVICE/service.yaml 2>/dev/null)
+          if [ \"\$_cnt\" = 'null' ] || [ -z \"\$_cnt\" ]; then
+            echo '  ERROR: Country $COUNTRY not defined in service.yaml for $SERVICE'
+            echo '         Run: kubeforge $SERVICE --country $COUNTRY --init'
+            exit 1
+          fi
 
+          # ── Save previous tag for reference ─────────────────────
+          _prev=\$(yq \".countries.$COUNTRY.tag\" services/$SERVICE/service.yaml 2>/dev/null || echo '')
+          if [ -n \"\$_prev\" ] && [ \"\$_prev\" != 'null' ]; then
+            yq -i \".countries.$COUNTRY.previous_tag = \\\"\$_prev\\\"\" services/$SERVICE/service.yaml
+          fi
+
+          # ── Update tag in service.yaml ──────────────────────────
+          yq -i \".countries.$COUNTRY.tag = \\\"$CI_COMMIT_TAG\\\"\" services/$SERVICE/service.yaml
+          echo '  tag=$CI_COMMIT_TAG  →  services/$SERVICE/service.yaml  [countries.$COUNTRY]'
+
+          # ── Deploy ──────────────────────────────────────────────
           CI=true ./deploy.sh $SERVICE --country $COUNTRY
         "
         EXIT=$?
         set -e
 
         if [ $EXIT -eq 0 ]; then
-          echo "  ✔  OK: $SERVICE"
+          echo "  ✔  OK: $SERVICE [$COUNTRY]"
         else
-          echo "  ✖  FAILED: $SERVICE (exit $EXIT)"
+          echo "  ✖  FAILED: $SERVICE [$COUNTRY]  (exit $EXIT)"
           FAILED="$FAILED $SERVICE"
         fi
         echo ""

@@ -5,6 +5,87 @@
 # ConfigMap cleanup. Requires lib/ui.sh and lib/validate.sh.
 # ================================================================
 
+# ── Template renderer ─────────────────────────────────────────────
+# Runs envsubst then strips hostAliases block when HOST_ALIAS_IP is unset.
+render_template() {
+  local rendered
+  rendered=$(envsubst < "$TEMPLATE")
+  if [ -z "${HOST_ALIAS_IP:-}" ]; then
+    rendered=$(echo "$rendered" | awk '
+      /^      hostAliases:/{skip=1; next}
+      skip && /^      [a-zA-Z]/{skip=0}
+      !skip{print}
+    ')
+  fi
+  echo "$rendered"
+}
+
+# ── Pre-deploy diff ───────────────────────────────────────────────
+# Runs kubectl diff, colorizes the output, and prompts for
+# confirmation before any apply step. CI=true auto-confirms.
+show_diff() {
+  section_header "What will change  ${COUNTRY:+[${COUNTRY}]}"
+
+  local combined=""
+  if [ "$TEMPLATE_LABEL" == "with-config" ] && [ -f "${CONFIGMAP_FILE:-}" ]; then
+    combined+=$(cat "$CONFIGMAP_FILE")
+    combined+=$'\n---\n'
+  fi
+  if [ "${HAS_MAPPING:-false}" == "true" ]; then
+    combined+=$(envsubst < "templates/mapping.yaml.template")
+    combined+=$'\n---\n'
+  fi
+  combined+=$(render_template)
+  if [ "${HAS_HPA:-false}" == "true" ]; then
+    combined+=$'\n---\n'
+    combined+=$(envsubst < "templates/hpa.yaml.template")
+  fi
+
+  local DIFF_OUT DIFF_EXIT
+  set +e
+  DIFF_OUT=$(echo "$combined" | kubectl diff -f - 2>&1)
+  DIFF_EXIT=$?
+  set -e
+
+  if [ $DIFF_EXIT -eq 0 ]; then
+    echo -e "  ${GREEN}✔${NC}  ${DIM}No changes — cluster already matches this config${NC}"
+    echo ""
+    return 0
+  fi
+
+  if [ $DIFF_EXIT -gt 1 ]; then
+    echo -e "  ${YELLOW}⊘${NC}  ${DIM}Diff unavailable (first deploy or admission error) — proceeding${NC}"
+    echo ""
+    return 0
+  fi
+
+  while IFS= read -r line; do
+    [[ "$line" =~ ^(---|\+\+\+|diff\ ) ]] && continue
+    case "${line:0:1}" in
+      '+') echo -e "  ${GREEN}${line}${NC}" ;;
+      '-') echo -e "  ${RED}${line}${NC}" ;;
+      '@') echo -e "  ${CYAN}${DIM}${line}${NC}" ;;
+      *)   echo -e "  ${DIM}${line}${NC}" ;;
+    esac
+  done <<< "$DIFF_OUT"
+  echo ""
+
+  if [ "${CI:-false}" = "true" ]; then
+    echo -e "  ${DIM}CI mode — auto-confirming${NC}"
+    echo ""
+    return 0
+  fi
+
+  printf "  Apply these changes? ${BOLD}[yes/no]:${NC} "
+  read -r CONFIRM
+  echo ""
+  if [ "$CONFIRM" != "yes" ]; then
+    echo -e "  ${YELLOW}⊘${NC}  Deploy cancelled"
+    echo ""
+    exit 0
+  fi
+}
+
 # ── Diagnostics ───────────────────────────────────────────────────
 show_diagnostics() {
   local POD
@@ -113,7 +194,11 @@ cleanup_old_configmaps() {
   total=$(echo "$all_cms" | grep -c .) || total=0
 
   if [ "$total" -le 3 ]; then
-    echo -e "  ${GREEN}✔${NC}  ${DIM}${total} configmap(s) found — within limit, nothing to clean up${NC}"
+    echo -e "  ${GREEN}${BOLD}Keeping (${total}):${NC}"
+    while IFS= read -r cm; do
+      [ -z "$cm" ] && continue
+      echo -e "     ${GREEN}▸${NC}  ${WHITE}${cm}${NC}"
+    done <<< "$all_cms"
     echo ""
     return 0
   fi
@@ -172,6 +257,12 @@ cleanup_old_configmaps() {
       fi
     done <<< "$delete_cms"
     echo ""
+    echo -e "  ${GREEN}${BOLD}Remaining:${NC}"
+    while IFS= read -r cm; do
+      [ -z "$cm" ] && continue
+      echo -e "     ${GREEN}▸${NC}  ${WHITE}${cm}${NC}"
+    done <<< "$keep_cms"
+    echo ""
   else
     echo -e "  ${YELLOW}⊘${NC}  Skipped — old configmaps kept"
     echo ""
@@ -179,8 +270,7 @@ cleanup_old_configmaps() {
 }
 
 # ── Init action ───────────────────────────────────────────────────
-# Scaffolds values.<country>.env and application.<country>.yaml
-# for a service. Run before the first country deploy.
+# Scaffolds service.yaml (if missing) and application.<country>.yaml.
 do_init() {
   if [ -z "${COUNTRY:-}" ]; then
     error_banner "--country required for init" \
@@ -188,51 +278,98 @@ do_init() {
     exit 1
   fi
 
-  local _cu
+  local _cu _svc_yaml _country_app
   _cu=$(echo "$COUNTRY" | tr '[:lower:]' '[:upper:]')
+  _svc_yaml="${SERVICE_DIR}/service.yaml"
+  _country_app="${SERVICE_DIR}/application.${COUNTRY}.yaml"
 
   banner "◈  Init  ·  ${SERVICE_NAME}  [${COUNTRY}]" \
-    "Scaffolding country overlay files..."
+    "Scaffolding service.yaml and application.${COUNTRY}.yaml..."
 
-  local country_env="${SERVICE_DIR}/values.${COUNTRY}.env"
-  local country_app="${SERVICE_DIR}/application.${COUNTRY}.yaml"
-
-  # ── values.<country>.env ───────────────────────────────────────
-  section_header "values.${COUNTRY}.env"
-  if [ -f "$country_env" ]; then
-    echo -e "  ${YELLOW}⊘${NC}  Already exists — skipping"
-    echo -e "     ${DIM}${country_env}${NC}"
+  # ── service.yaml ──────────────────────────────────────────────
+  section_header "service.yaml"
+  if [ -f "$_svc_yaml" ]; then
+    # File exists — add country section if missing
+    if command -v yq &>/dev/null; then
+      local _existing
+      _existing=$(yq ".countries.${COUNTRY} // \"\"" "$_svc_yaml" 2>/dev/null)
+      if [ -n "$_existing" ] && [ "$_existing" != "null" ]; then
+        echo -e "  ${YELLOW}⊘${NC}  Country '${COUNTRY}' already in service.yaml — skipping"
+      else
+        yq -i ".countries.${COUNTRY}.namespace = \"<your-namespace>\" | \
+               .countries.${COUNTRY}.tag = \"<image-tag>\"" "$_svc_yaml"
+        echo -e "  ${GREEN}✔${NC}  Added ${WHITE}countries.${COUNTRY}${NC} section to service.yaml"
+        echo -e "     ${DIM}Fill in: namespace and tag${NC}"
+      fi
+    else
+      echo -e "  ${YELLOW}⚠${NC}  service.yaml exists but yq not available — add countries.${COUNTRY} manually"
+    fi
   else
-    cat > "$country_env" <<EOF
-# ── ${_cu} country override ──────────────────────────────────────────
-NAMESPACE=
-TAG=
+    # Create fresh service.yaml
+    local _img="${IMAGE:-<your-registry>/${SERVICE_NAME}}"
+    local _port="${PORT:-8080}"
+    local _env="${ENVIRONMENT:-test}"
+    cat > "$_svc_yaml" <<EOF
+# ── ${SERVICE_NAME} ────────────────────────────────────────────────
+name: ${SERVICE_NAME}
+image: ${_img}
+port: ${_port}
+environment: ${_env}
+config_version: v1
+
+replicas: 1
+rollout_timeout: 120
+
+resources:              # default — override per country if needed
+  cpu: 200m/500m        # request/limit
+  memory: 256Mi/512Mi
+
+# Remove block below if no autoscaling needed
+#scaling:
+#  min: 2
+#  max: 6
+#  cpu_threshold: 70
+#  mem_threshold: 80
+
+# Remove block below if no Ambassador routing needed
+#routing:
+#  prefix: /${SERVICE_NAME}/
+#  rewrite: /
+
+countries:
+  ${COUNTRY}:
+    namespace: <your-namespace>
+    tag: <image-tag>
+    # ambassador_host: <your-host>   # optional
+    # host_alias_ip: <ip>            # optional
+    # resources:                     # optional — overrides base
+    #   cpu: 500m/1000m
+    #   memory: 512Mi/1Gi
 EOF
-    echo -e "  ${GREEN}✔${NC}  Created: ${WHITE}${country_env}${NC}"
-    echo -e "     ${DIM}Fill in:${NC}  ${BOLD}NAMESPACE${NC}  and  ${BOLD}TAG${NC}"
+    echo -e "  ${GREEN}✔${NC}  Created: ${WHITE}${_svc_yaml}${NC}"
+    echo -e "     ${DIM}Fill in namespace and tag under countries.${COUNTRY}${NC}"
   fi
   echo ""
 
   # ── application.<country>.yaml ────────────────────────────────
   section_header "application.${COUNTRY}.yaml"
-  if [ -f "$country_app" ]; then
+  if [ -f "$_country_app" ]; then
     echo -e "  ${YELLOW}⊘${NC}  Already exists — skipping"
-    echo -e "     ${DIM}${country_app}${NC}"
+    echo -e "     ${DIM}${_country_app}${NC}"
   elif [ -f "${SERVICE_DIR}/application.yaml" ]; then
-    cp "${SERVICE_DIR}/application.yaml" "$country_app"
-    echo -e "  ${GREEN}✔${NC}  Created: ${WHITE}${country_app}${NC}"
-    echo -e "     ${DIM}Copied from application.yaml — update config values for ${_cu}${NC}"
+    cp "${SERVICE_DIR}/application.yaml" "$_country_app"
+    echo -e "  ${GREEN}✔${NC}  Created: ${WHITE}${_country_app}${NC}"
+    echo -e "     ${DIM}Copied from application.yaml — update DB URLs and endpoints for ${_cu}${NC}"
   else
-    echo -e "  ${YELLOW}⊘${NC}  No base application.yaml — ${DIM}${country_app}${NC} not created"
-    echo -e "     ${DIM}This service uses the no-config template — no application yaml needed${NC}"
+    echo -e "  ${DIM}⊘  No base application.yaml — this service uses no-config template${NC}"
   fi
   echo ""
 
   divider
   echo ""
   echo -e "  ${BOLD}${WHITE}Next steps:${NC}"
-  echo -e "     ${YELLOW}1.${NC}  Edit ${WHITE}${country_env}${NC}   ← set NAMESPACE and TAG"
-  echo -e "     ${YELLOW}2.${NC}  Edit ${WHITE}${country_app}${NC}   ← update config values for ${_cu}"
+  echo -e "     ${YELLOW}1.${NC}  Edit ${WHITE}${_svc_yaml}${NC}   ← set namespace + tag under countries.${COUNTRY}"
+  echo -e "     ${YELLOW}2.${NC}  Edit ${WHITE}${_country_app}${NC}   ← update config for ${_cu}"
   echo -e "     ${YELLOW}3.${NC}  ${WHITE}kubeforge ${SERVICE_NAME} --country ${COUNTRY} --dry-run${NC}"
   echo -e "     ${YELLOW}4.${NC}  ${WHITE}kubeforge ${SERVICE_NAME} --country ${COUNTRY}${NC}"
   echo ""
@@ -311,7 +448,7 @@ do_dry_run() {
   fi
 
   section_header "Rendered Deployment"
-  envsubst < "$TEMPLATE"
+  render_template
 
   echo ""
   divider
@@ -350,22 +487,11 @@ do_deploy() {
     "Image      :  $IMAGE_SHORT" \
     "Template   :  $TEMPLATE_LABEL"
 
-  # ── Show configmap info (applied first) ───────────────────────
-  if [ "$TEMPLATE_LABEL" == "with-config" ] && [ -f "$CONFIGMAP_FILE" ]; then
-    section_header "ConfigMap  (will be applied first)"
-    local CM_NAME
-    CM_NAME=$(grep 'name:' "$CONFIGMAP_FILE" | head -1 | awk '{print $2}')
-    echo -e "  ${GREY}Name:${NC} ${WHITE}${CM_NAME}${NC}"
-    echo -e "  ${GREY}File:${NC} ${WHITE}${CONFIGMAP_FILE}${NC}"
-    echo ""
-  fi
-
   validate_configs
 
-  # ── Step: ConfigMap (always first) ────────────────────────────
+  # ── Phase 1: Generate (no apply yet) ──────────────────────────
   if [ "$TEMPLATE_LABEL" == "with-config" ]; then
-    step $STEP_NUM $TOTAL "Generating configmap..."
-    echo ""
+    section_header "Generating ConfigMap"
     echo ""
     divider
     echo ""
@@ -386,21 +512,21 @@ do_deploy() {
       exit 1
     fi
 
-    # Re-source base + country override to get fresh CONFIGMAP_FULL_NAME
-    set -a
-    source "${SERVICE_DIR}/values.env"
-    [ -n "${COUNTRY:-}" ] && [ -f "${SERVICE_DIR}/values.${COUNTRY}.env" ] && \
-      source "${SERVICE_DIR}/values.${COUNTRY}.env"
-    set +a
-    export CONFIGMAP_FULL_NAME="${CONFIGMAP_FULL_NAME:-}"
+    # Re-load config to pick up fresh CONFIGMAP_FULL_NAME written by generate-configmap.sh
+    load_service_config
 
-    # Refresh CONFIGMAP_FILE with country-specific name
     if [ -n "${COUNTRY:-}" ]; then
-      CONFIGMAP_FILE="${SERVICE_DIR}/configmap.${COUNTRY}.yaml"
+      CONFIGMAP_FILE="${SERVICE_DIR}/generated/configmap.${COUNTRY}.yaml"
     else
-      CONFIGMAP_FILE="${SERVICE_DIR}/configmap.yaml"
+      CONFIGMAP_FILE="${SERVICE_DIR}/generated/configmap.yaml"
     fi
+  fi
 
+  # ── Phase 2: Diff + Confirm ────────────────────────────────────
+  show_diff
+
+  # ── Phase 3: Apply ─────────────────────────────────────────────
+  if [ "$TEMPLATE_LABEL" == "with-config" ]; then
     if [ -f "$CONFIGMAP_FILE" ]; then
       step $STEP_NUM $TOTAL "Applying configmap..."
       local CM_OUTPUT CM_EXIT
@@ -423,7 +549,6 @@ do_deploy() {
       step_skipped
     fi
     STEP_NUM=$(( STEP_NUM + 1 ))
-
   else
     echo -e "  ${DIM}[skip]${NC}   ${YELLOW}⊘  no-config template — configmap skipped${NC}"
   fi
@@ -442,7 +567,7 @@ do_deploy() {
       kubectl_result "$MAPPING_OUTPUT"
     else
       step_fail
-      error_banner "Mapping apply failed" "Check PREFIX / REWRITE in values.env"
+      error_banner "Mapping apply failed" "Check routing.prefix / routing.rewrite in service.yaml"
       echo "$MAPPING_OUTPUT" | sed 's/^/     /'
       echo ""
       exit 1
@@ -455,7 +580,7 @@ do_deploy() {
   # ── Step: Deployment + Service ─────────────────────────────────
   step $STEP_NUM $TOTAL "Applying deployment + service..."
   local RENDERED DEPLOY_OUTPUT DEPLOY_EXIT
-  RENDERED=$(envsubst < "$TEMPLATE")
+  RENDERED=$(render_template)
   set +e
   DEPLOY_OUTPUT=$(echo "$RENDERED" | kubectl apply -f - 2>&1)
   DEPLOY_EXIT=$?
@@ -487,7 +612,7 @@ do_deploy() {
     else
       step_fail
       error_banner "HPA apply failed" \
-        "Check HPA_MIN HPA_MAX HPA_CPU_THRESHOLD HPA_MEM_THRESHOLD in values.env"
+        "Check scaling block in service.yaml"
       echo "$HPA_OUTPUT" | sed 's/^/     /'
       echo ""
       exit 1
