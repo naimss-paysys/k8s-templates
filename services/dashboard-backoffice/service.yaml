@@ -4,30 +4,23 @@ image: dashboard-backoffice
 port: 5501
 environment: test
 config_version: v2
-
-
 rollout_timeout: 60
-
 resources:
   cpu: 200m/800m
   memory: 1536Mi/2560Mi
-
 routing:
   prefix: /dashboard-backoffice/
   rewrite: /
-
 # scaling:
 #   min: 1
 #   max: 4
 #   cpu_threshold: 70
 #   mem_threshold: 75
-
 secrets:
   - my-registry-secret
   - dashboard-application-secrets
   - elk-credentials
   - mixxmmp-tls-secret
-
 countries:
   tz:
     namespace: test-mmp
@@ -35,3 +28,4 @@ countries:
     replicas: 1
     ambassador_host: mixxmmp-test.tigo.co.tz
     host_alias_ip: 10.245.0.169
+    configmap_full_name: dashboard-backoffice-config-tz-v2-1.0.22-tz

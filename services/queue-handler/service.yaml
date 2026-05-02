@@ -4,10 +4,7 @@ image: queue-handler
 port: 8080
 environment: test
 config_version: v1
-
-
 rollout_timeout: 60
-
 # routing:
 #   prefix: /queue-handler/
 #   rewrite: /
@@ -21,13 +18,11 @@ rollout_timeout: 60
 #   max: 6
 #   cpu_threshold: 70
 #   mem_threshold: 80
-
 secrets:
   - my-registry-secret
   - dashboard-application-secrets
   - elk-credentials
   - mixxmmp-tls-secret
-
 countries:
   tz:
     namespace: test-mmp
@@ -35,3 +30,4 @@ countries:
     replicas: 1
     ambassador_host: mixxmmp-test.tigo.co.tz
     host_alias_ip: 10.245.0.169
+    configmap_full_name: queue-handler-config-tz-v1-1.0.3

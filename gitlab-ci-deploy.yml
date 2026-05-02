@@ -6,6 +6,14 @@
 #   Set it in GitLab:  Settings → CI/CD → Variables → COUNTRY = tz
 #   To deploy Togo:    override COUNTRY = tg  when triggering pipeline
 #
+# PREREQUISITE:
+#   This file uses  extends: .common-rules  — you must define
+#   .common-rules in your main .gitlab-ci.yml, for example:
+#
+#     .common-rules:
+#       rules:
+#         - if: '$CI_COMMIT_TAG'          # only on version tags
+#
 # Required CI/CD Variables (Settings → CI/CD → Variables):
 #   SSH_PRIVATE_KEY   — type: File  — private key for DEPLOY_HOST
 #   DEPLOY_USER       — SSH user    (e.g. admin-dnf)
@@ -14,11 +22,31 @@
 #   CI_RUNNER_TAG     — runner tag for deploy jobs
 #   SERVICES          — space-separated: "dashboard-acquiring-api dashboard-backoffice"
 #   COUNTRY           — "tz"  or  "tg"   ← controls which job runs
+#
+# Optional CI/CD Variables:
+#   APP_CONFIG_DIR    — used only for single-module projects (rest-handler, web,
+#                       queue-handler).  Path to application.yaml in the repo.
+#                       Default: repo root  (.)
+#                       Example: "src/main/resources"
+#
+# APPLICATION CONFIG COPY LOGIC (per service):
+#   Module project  (dashboard-application):
+#     Looks for  <service-name>/application.yaml  in the repo.
+#     e.g.  dashboard-backoffice/application.yaml
+#     → copied to  services/dashboard-backoffice/application.<country>.yaml
+#
+#   Single project  (rest-handler, web, queue-handler):
+#     Looks for  application.yaml  at  APP_CONFIG_DIR  (default: repo root).
+#     → copied to  services/<service>/application.<country>.yaml
+#
+#   Frontend projects  (merchant-portal, backoffice-ui):
+#     No application.yaml exists — copy step is skipped automatically.
 # ================================================================
 
 # ── Shared config all deploy jobs inherit ─────────────────────────
 .deploy-common:
   stage: deploy
+  timeout: 20m
   tags:
     - ${CI_RUNNER_TAG}
   extends: .common-rules
@@ -53,6 +81,35 @@
       for SERVICE in $SERVICES; do
         echo "  ▶  $SERVICE  [$COUNTRY]  →  $CI_COMMIT_TAG"
 
+        # ── Copy application.yaml → application.<country>.yaml on deploy host ──
+        # Detection order:
+        #   1. <service-name>/application.yaml   — module project  (e.g. dashboard-application)
+        #   2. <APP_CONFIG_DIR>/application.yaml — single project  (e.g. rest-handler, web)
+        #   3. Neither found                     — frontend / no-config service → skip
+        _app_src=""
+        if [ -f "${SERVICE}/application.yaml" ]; then
+          _app_src="${SERVICE}/application.yaml"
+        elif [ -f "${APP_CONFIG_DIR:-.}/application.yaml" ]; then
+          _app_src="${APP_CONFIG_DIR:-.}/application.yaml"
+        fi
+
+        if [ -n "$_app_src" ]; then
+          echo "  ↑  Syncing ${_app_src} → services/$SERVICE/application.${COUNTRY}.yaml"
+          scp -i "$SSH_PRIVATE_KEY" \
+              -o StrictHostKeyChecking=no \
+              "$_app_src" \
+              "$DEPLOY_USER@$DEPLOY_HOST:$K8S_DIR/services/$SERVICE/application.${COUNTRY}.yaml" \
+            || {
+              echo "  ✖  FAILED: could not sync application config for $SERVICE"
+              FAILED="$FAILED $SERVICE"
+              continue
+            }
+          echo "  ✔  Config synced: ${_app_src} → application.${COUNTRY}.yaml"
+        else
+          echo "  ⊘  No application.yaml found — skipping config sync for $SERVICE"
+        fi
+
+        # ── SSH: validate, tag-update, deploy ─────────────────────────
         set +e
         ssh -i "$SSH_PRIVATE_KEY" \
             -o StrictHostKeyChecking=no \
@@ -61,7 +118,7 @@
             -o ServerAliveCountMax=6 \
             "$DEPLOY_USER@$DEPLOY_HOST" "
           set -euo pipefail
-          cd $K8S_DIR
+          cd \"$K8S_DIR\"
 
           # ── Validate service directory ──────────────────────────
           [ -d services/$SERVICE ] || {

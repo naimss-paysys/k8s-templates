@@ -873,7 +873,7 @@ Checks everything in order:
 |-------|-----------------|
 | **Connectivity** | kubeconfig context, API server reachable |
 | **Namespace access** | `kubectl auth can-i get pods -n <namespace>` |
-| **Secrets** | `my-registry-secret`, `dashboard-application-secrets`, `elk-credentials`, `mixxmmp-tls-secret` |
+| **Secrets** | Checks every secret listed under `secrets:` in `service.yaml` (falls back to 4 defaults if not set) |
 | **Shared ConfigMaps** | `shared-logback`, `shared-filebeat-config` |
 | **PVC** | `file-storage` exists and is `Bound` |
 | **Deployment** | Ready replicas match desired |
@@ -904,7 +904,7 @@ Checks everything in order:
   ────────────────────────────────────────────────────
   ✔  Deployment: 2/2 ready
   ✔  Pods: 2 running
-  ✔  ConfigMap: rest-handler-config-v1-1.0.4
+  ✔  ConfigMap: rest-handler-config-tz-v1-1.0.4
 
   ────────────────────────────────────────────────────
 
@@ -920,11 +920,12 @@ Checks everything in order:
 ConfigMaps are versioned using the pattern:
 
 ```
-{name}-config-{config_version}-{tag}
+{name}-config-{country}-{config_version}-{tag}
 
 # Examples:
-rest-handler-config-v1-1.0.4
-dashboard-backoffice-config-v2-1.0.22-tz
+rest-handler-config-tz-v1-1.0.4
+dashboard-backoffice-config-tz-v2-1.0.22-tz
+rest-handler-config-tg-v1-1.0.4-tg
 ```
 
 - `config_version` is **auto-bumped** in `service.yaml` when config keys change (keys added or removed). Value-only changes do not trigger a bump. You can also bump it manually to force a new versioned ConfigMap name at any time.
@@ -974,17 +975,40 @@ Set these in **Settings → CI/CD → Variables**:
 | `SERVICES` | Variable | Space-separated service names to deploy |
 | `COUNTRY` | Variable | `tz` or `tg` — controls which job runs |
 
+#### Optional CI/CD Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `APP_CONFIG_DIR` | `.` (repo root) | For single-module projects — path inside the repo where `application.yaml` lives. Example: `src/main/resources`. Only used when no service-named subfolder is found. |
+
+#### Application config copy — auto-detection
+
+The pipeline auto-detects where `application.yaml` lives and copies it as `application.<country>.yaml` on the deploy host. No manual configuration needed for the three project types:
+
+| Project type | Repo layout | Auto-detected source |
+|---|---|---|
+| **Module project** (`dashboard-application`) | `dashboard-backoffice/application.yaml` | `<service-name>/application.yaml` |
+| **Single project** (`rest-handler`, `web`, `queue-handler`) | `application.yaml` at repo root | `APP_CONFIG_DIR/application.yaml` |
+| **Frontend** (`merchant-portal`, `backoffice-ui`) | no `application.yaml` | step skipped automatically |
+
+All three cases copy to the same destination: `services/<service>/application.<country>.yaml` on the deploy host.
+
 #### What the pipeline does per service
 
 ```
-1. SSH connectivity check (ConnectTimeout=10s)
-2. Validate services/<service>/service.yaml exists and country is defined
-3. yq read: save current tag → countries.<country>.previous_tag (documentation reference)
-4. yq update: set countries.<country>.tag = CI_COMMIT_TAG in service.yaml
-5. CI=true ./deploy.sh <service> --country <country>
-      ↳ Full KubeForge deploy (validate → configmap → diff → apply → rollout)
-      ↳ CI=true disables all interactive prompts
-6. Accumulate failures — all services attempted before reporting
+1. SSH connectivity check  (ConnectTimeout=10s)
+2. SCP application.yaml → services/<service>/application.<country>.yaml on deploy host
+     ↳ Checks <service>/application.yaml first  (module project)
+     ↳ Falls back to APP_CONFIG_DIR/application.yaml  (single project)
+     ↳ Skipped if neither found  (frontend — no application.yaml)
+     ↳ Fails the service and continues to next if SCP errors
+3. SSH: validate services/<service>/service.yaml exists and country is defined
+4. SSH: save current tag → countries.<country>.previous_tag  (reference)
+5. SSH: yq update countries.<country>.tag = CI_COMMIT_TAG in service.yaml
+6. SSH: CI=true ./deploy.sh <service> --country <country>
+          ↳ image check → configmap → diff → apply → rollout watch
+          ↳ CI=true disables all interactive prompts
+7. Accumulate failures — all services attempted before reporting
 ```
 
 #### `CI=true` behaviour

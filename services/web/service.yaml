@@ -22,7 +22,6 @@ secrets:
   - dashboard-application-secrets
   - elk-credentials
   - mixxmmp-tls-secret
-
 countries:
   tz:
     namespace: test-mmp
@@ -30,4 +29,4 @@ countries:
     replicas: 1
     ambassador_host: mixxmmp-test.tigo.co.tz
     host_alias_ip: 10.245.0.169
-    configmap_full_name: web-config-v1-1.0.0
+    configmap_full_name: web-config-tz-v1-1.0.0

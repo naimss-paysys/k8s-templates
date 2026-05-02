@@ -173,8 +173,12 @@ if [ "$_old_keys" != "$_new_keys" ]; then
   _cv_num=$(( _cv_num + 1 ))
   _PENDING_CV="v${_cv_num}"
 
-  # Recompute ConfigMap name with new version
-  _PENDING_CFN="${CONFIGMAP_NAME}-${_PENDING_CV}-${TAG}"
+  # Recompute ConfigMap name with new version (must include country, matching CONFIGMAP_FULL_NAME format)
+  if [ -n "${COUNTRY:-}" ]; then
+    _PENDING_CFN="${CONFIGMAP_NAME}-${COUNTRY}-${_PENDING_CV}-${TAG}"
+  else
+    _PENDING_CFN="${CONFIGMAP_NAME}-${_PENDING_CV}-${TAG}"
+  fi
   _PENDING_CFN=$(echo "$_PENDING_CFN" | tr '[:upper:]' '[:lower:]')
 
   # Update name in TEMP_FILE so the diff shows the bumped name

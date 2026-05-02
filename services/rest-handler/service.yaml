@@ -36,4 +36,4 @@ countries:
     #   cpu: 500m/1000m
     #   memory: 512Mi/1Gi
 
-    configmap_full_name: rest-handler-config-v1-1.0.4
+    configmap_full_name: rest-handler-config-tz-v1-1.0.4
