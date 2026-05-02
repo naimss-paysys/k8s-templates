@@ -93,8 +93,12 @@ else
   TEMP_FILE="generated/configmap.new.yaml"
 fi
 
-# Build versioned name
-CONFIGMAP_FULL_NAME="${CONFIGMAP_NAME}-${CONFIG_VERSION}-${TAG}"
+# Build versioned name — include country so cleanup stays per-country isolated
+if [ -n "${COUNTRY:-}" ]; then
+  CONFIGMAP_FULL_NAME="${CONFIGMAP_NAME}-${COUNTRY}-${CONFIG_VERSION}-${TAG}"
+else
+  CONFIGMAP_FULL_NAME="${CONFIGMAP_NAME}-${CONFIG_VERSION}-${TAG}"
+fi
 CONFIGMAP_FULL_NAME=$(echo "$CONFIGMAP_FULL_NAME" | tr '[:upper:]' '[:lower:]')
 
 # Write CONFIGMAP_FULL_NAME back to countries.<country>.configmap_full_name in service.yaml

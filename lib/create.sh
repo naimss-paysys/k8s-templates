@@ -182,7 +182,7 @@ cleanup_old_configmaps() {
     --sort-by=.metadata.creationTimestamp \
     --no-headers 2>/dev/null \
     | awk '{print $1}' \
-    | grep "^${base_name}-") || all_cms=""
+    | grep "^${base_name}-${COUNTRY:+${COUNTRY}-}") || all_cms=""
 
   if [ -z "$all_cms" ]; then
     echo -e "  ${DIM}No versioned configmaps found for ${base_name}${NC}"
