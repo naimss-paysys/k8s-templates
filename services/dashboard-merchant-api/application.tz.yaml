@@ -31,7 +31,8 @@ password:
   reset:
     token-expiration-minutes: 1440
 jwt:
-  expiration-ms: 86400000  # 24 hours (24 * 60 * 60 * 1000)
+  expiration-ms: 3600000 # 1 hour
+  refresh-expiration-ms: 86400000 # 24 hours (24 * 60 * 60 * 1000)
   # Other common values:
   # 3600000   = 1 hour
   # 7200000   = 2 hours
@@ -253,11 +254,11 @@ wallet:
     password: tigo1234
     changePinUsername: mw_ath_test
     changePinPassword: TQjudc@lM$3Si
-    consumer-id: TIGO
+    consumer-id: MWTEST
     country: TZA
     short-code: 600747
-    channel-user: self.care.app
-    channel-password: <your_channel_password>
+    channel-user: mixx.merchant
+    channel-password: GoMixx@2026
 
 # Handler Management Configuration
 handler:
@@ -278,6 +279,8 @@ handler:
       merchantSignup: 19
       disable-consumer-id: MMP
       disable-terminal-type: API
+      send-email-service: axian-send-email
+      from-email: mixxbyyas.service@mixx.co.tz
 
 # ===============================
 # MPAY Service Configuration (Centralized)
@@ -286,7 +289,6 @@ handler:
 # ===============================
 mpay:
   services:
-    initiate-rtp: axian-rtp-initiator
     create-account: axian-mmp-create-handler
     change-pin: axian-change-pin
     change-pin-check: axian-change-pin-check
@@ -305,6 +307,7 @@ mpay:
     transfer: axian-mmp-proxy-transfer
     inquiry: axian-transaction-query-status
     balance-inquiry: axian-check-balance-inquiry
+    initiate-rtp: axian-rtp-initiator
   wallet:
     username: test_mw_osb
     password: tigo1234
@@ -430,7 +433,14 @@ payment:
 
 external-api:
 
+  auth:
+    username: "mixx.merchant"
+    password: "GoMixx@2026"
+    consumer-id: "MixxMerchantPlatform"
+
   requests:
+    kyc-upgrade:
+      tran-type: "axian-kyc-upgrade"
     engrafi:
       tran-type: "axian-engrafi-staging"
     account-status:

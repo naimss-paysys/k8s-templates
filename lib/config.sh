@@ -49,17 +49,20 @@ _load_yaml() {
   _yq_check
   local f="${SERVICE_DIR}/service.yaml"
 
-  # Base
+  # Base — shared across all countries
   SERVICE_NAME=$(_yq '.name'                      "$f")
   IMAGE=$(_yq        '.image'                     "$f")
   PORT=$(_yq         '.port'                      "$f")
-  ENVIRONMENT=$(_yq  '.environment'               "$f")
   CONFIG_VERSION=$(_yq '.config_version // "v1"'  "$f")
   CONFIGMAP_NAME="${SERVICE_NAME}-config"
-  REPLICAS=$(_yq       '.replicas // 1'           "$f")
+  NAMESPACE=$(_yq      '.namespace     // ""'     "$f")
+  TAG=$(_yq            '.tag           // ""'     "$f")
+  REPLICAS=$(_yq       '.replicas      // 1'      "$f")
+  HOST_ALIAS_IP=$(_yq  '.host_alias_ip // ""'     "$f")
+  TLS_SECRET=$(_yq     '.tls_secret   // ""'      "$f")
   ROLLOUT_TIMEOUT=$(_yq '.rollout_timeout // 120' "$f")
 
-  # Routing (base — applies to all countries unless overridden)
+  # Routing
   PREFIX=$(_yq  '.routing.prefix  // ""' "$f")
   REWRITE=$(_yq '.routing.rewrite // ""' "$f")
 
@@ -69,23 +72,30 @@ _load_yaml() {
   HPA_CPU_THRESHOLD=$(_yq '.scaling.cpu_threshold // ""' "$f")
   HPA_MEM_THRESHOLD=$(_yq '.scaling.mem_threshold // ""' "$f")
 
-  # Base resources (can be overridden per country)
+  # Base resources
   local base_cpu base_mem
   base_cpu=$(_yq '.resources.cpu    // ""' "$f")
   base_mem=$(_yq '.resources.memory // ""' "$f")
 
-  # Country-specific
-  NAMESPACE="" TAG="" AMBASSADOR_HOST="" HOST_ALIAS_IP="" CONFIGMAP_FULL_NAME=""
+  # Country block — only ambassador_host, tls_secret, configmap_full_name, previous_tag
+  # namespace / tag / replicas / host_alias_ip can still be overridden per country if needed
+  AMBASSADOR_HOST="" CONFIGMAP_FULL_NAME=""
   if [ -n "${COUNTRY:-}" ]; then
-    NAMESPACE=$(_yq        ".countries.${COUNTRY}.namespace                   " "$f")
-    TAG=$(_yq              ".countries.${COUNTRY}.tag                         " "$f")
-    AMBASSADOR_HOST=$(_yq  ".countries.${COUNTRY}.ambassador_host  // \"\"   " "$f")
-    HOST_ALIAS_IP=$(_yq    ".countries.${COUNTRY}.host_alias_ip    // \"\"   " "$f")
+    AMBASSADOR_HOST=$(_yq ".countries.${COUNTRY}.ambassador_host     // \"\"" "$f")
     CONFIGMAP_FULL_NAME=$(_yq ".countries.${COUNTRY}.configmap_full_name // \"\"" "$f")
 
-    local c_replicas
-    c_replicas=$(_yq ".countries.${COUNTRY}.replicas // \"\"" "$f")
-    [ -n "$c_replicas" ] && REPLICAS="$c_replicas"
+    local c_namespace c_tag c_host_alias_ip c_tls c_replicas
+    c_namespace=$(_yq   ".countries.${COUNTRY}.namespace     // \"\"" "$f")
+    c_tag=$(_yq         ".countries.${COUNTRY}.tag           // \"\"" "$f")
+    c_host_alias_ip=$(_yq ".countries.${COUNTRY}.host_alias_ip // \"\"" "$f")
+    c_tls=$(_yq         ".countries.${COUNTRY}.tls_secret    // \"\"" "$f")
+    c_replicas=$(_yq    ".countries.${COUNTRY}.replicas      // \"\"" "$f")
+
+    [ -n "$c_namespace"    ] && NAMESPACE="$c_namespace"
+    [ -n "$c_tag"          ] && TAG="$c_tag"
+    [ -n "$c_host_alias_ip" ] && HOST_ALIAS_IP="$c_host_alias_ip"
+    [ -n "$c_tls"          ] && TLS_SECRET="$c_tls"
+    [ -n "$c_replicas"     ] && REPLICAS="$c_replicas"
 
     # Resources: country value wins, falls back to base
     local c_cpu c_mem
@@ -144,7 +154,7 @@ write_configmap_full_name() {
 
 # ── Export all template variables ─────────────────────────────────
 _export_vars() {
-  export SERVICE_NAME IMAGE TAG PORT NAMESPACE ENVIRONMENT
+  export SERVICE_NAME IMAGE TAG PORT NAMESPACE
   export PREFIX="${PREFIX:-}"               REWRITE="${REWRITE:-}"
   export HPA_MIN="${HPA_MIN:-}"             HPA_MAX="${HPA_MAX:-}"
   export HPA_CPU_THRESHOLD="${HPA_CPU_THRESHOLD:-}" HPA_MEM_THRESHOLD="${HPA_MEM_THRESHOLD:-}"
@@ -157,6 +167,7 @@ _export_vars() {
   export REPLICAS="${REPLICAS:-1}"
   export AMBASSADOR_HOST="${AMBASSADOR_HOST:-}"
   export HOST_ALIAS_IP="${HOST_ALIAS_IP:-}"
+  export TLS_SECRET="${TLS_SECRET:-}"
   export SERVICE_CONFIG_FORMAT="${SERVICE_CONFIG_FORMAT:-env}"
 }
 

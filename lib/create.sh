@@ -308,13 +308,11 @@ do_init() {
     # Create fresh service.yaml
     local _img="${IMAGE:-<your-registry>/${SERVICE_NAME}}"
     local _port="${PORT:-8080}"
-    local _env="${ENVIRONMENT:-test}"
     cat > "$_svc_yaml" <<EOF
 # ── ${SERVICE_NAME} ────────────────────────────────────────────────
 name: ${SERVICE_NAME}
 image: ${_img}
 port: ${_port}
-environment: ${_env}
 config_version: v1
 
 replicas: 1

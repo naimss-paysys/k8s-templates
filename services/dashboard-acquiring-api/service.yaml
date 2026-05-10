@@ -2,36 +2,37 @@
 name: dashboard-acquiring-api
 image: dashboard-acquiring-api
 port: 5503
-environment: test
-config_version: v3
-
-
+namespace: test-mmp
+tag: 1.0.24-TZ
+replicas: 1
+host_alias_ip: 10.245.0.169
+config_version: v4
 rollout_timeout: 60
-
 resources:
   cpu: 200m/800m
   memory: 1024Mi/1536Mi
-
 routing:
   prefix: /dashboard-acquiring-api/
   rewrite: /
-
 scaling:
   min: 1
   max: 2
   cpu_threshold: 90
   mem_threshold: 75
-
 secrets:
   - my-registry-secret
   - dashboard-application-secrets
   - elk-credentials
   - mixxmmp-tls-secret
-
 countries:
   tz:
-    namespace: test-mmp
-    tag: 1.0.21-TZ
-    replicas: 1
     ambassador_host: mixxmmp-test.tigo.co.tz
-    host_alias_ip: 10.245.0.169
+    country: tz
+    tls_secret: mixxmmp-tls-secret
+    configmap_full_name: dashboard-acquiring-api-config-tz-v4-1.0.28-tz
+    previous_tag: 1.0.27-TZ
+    tag: 1.0.28-TZ
+  tg:
+    ambassador_host: togo.mixx.tg
+    country: tg
+    tls_secret: tg-tls

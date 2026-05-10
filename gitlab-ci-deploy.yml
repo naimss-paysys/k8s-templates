@@ -2,9 +2,8 @@
 # KubeForge Deploy Stage — drop into .gitlab-ci.yml
 #
 # HOW IT WORKS:
-#   One pipeline variable COUNTRY controls which job runs.
-#   Set it in GitLab:  Settings → CI/CD → Variables → COUNTRY = tz
-#   To deploy Togo:    override COUNTRY = tg  when triggering pipeline
+#   One pipeline job deploys ALL countries defined in each
+#   service's service.yaml automatically — no COUNTRY variable needed.
 #
 # PREREQUISITE:
 #   This file uses  extends: .common-rules  — you must define
@@ -21,7 +20,6 @@
 #   K8S_DIR           — absolute path on host  (e.g. /home/admin-dnf/k8s)
 #   CI_RUNNER_TAG     — runner tag for deploy jobs
 #   SERVICES          — space-separated: "dashboard-acquiring-api dashboard-backoffice"
-#   COUNTRY           — "tz"  or  "tg"   ← controls which job runs
 #
 # Optional CI/CD Variables:
 #   APP_CONFIG_DIR    — used only for single-module projects (rest-handler, web,
@@ -34,6 +32,7 @@
 #     Looks for  <service-name>/application.yaml  in the repo.
 #     e.g.  dashboard-backoffice/application.yaml
 #     → copied to  services/dashboard-backoffice/application.<country>.yaml
+#       for every country defined in service.yaml
 #
 #   Single project  (rest-handler, web, queue-handler):
 #     Looks for  application.yaml  at  APP_CONFIG_DIR  (default: repo root).
@@ -43,8 +42,7 @@
 #     No application.yaml exists — copy step is skipped automatically.
 # ================================================================
 
-# ── Shared config all deploy jobs inherit ─────────────────────────
-.deploy-common:
+deploy:
   stage: deploy
   timeout: 20m
   tags:
@@ -54,7 +52,7 @@
     - chmod 600 "$SSH_PRIVATE_KEY"
     # Fail fast if required variables are missing
     - |
-      for _v in CI_COMMIT_TAG DEPLOY_USER DEPLOY_HOST K8S_DIR SERVICES SSH_PRIVATE_KEY COUNTRY; do
+      for _v in CI_COMMIT_TAG DEPLOY_USER DEPLOY_HOST K8S_DIR SERVICES SSH_PRIVATE_KEY; do
         [ -n "${!_v}" ] || { echo "  ERROR: $_v is not set — add it to CI/CD Variables"; exit 1; }
       done
     # Verify SSH reachable before starting the loop
@@ -69,7 +67,6 @@
       echo ""
       echo "  ┌────────────────────────────────────────────────────"
       echo "  │  KubeForge Pipeline Deploy"
-      echo "  │  Country  : $COUNTRY"
       echo "  │  Tag      : $CI_COMMIT_TAG"
       echo "  │  Host     : $DEPLOY_USER@$DEPLOY_HOST"
       echo "  │  Services : $SERVICES"
@@ -79,13 +76,24 @@
       FAILED=""
 
       for SERVICE in $SERVICES; do
-        echo "  ▶  $SERVICE  [$COUNTRY]  →  $CI_COMMIT_TAG"
+        echo "  ▶  $SERVICE  →  $CI_COMMIT_TAG"
 
-        # ── Copy application.yaml → application.<country>.yaml on deploy host ──
-        # Detection order:
-        #   1. <service-name>/application.yaml   — module project  (e.g. dashboard-application)
-        #   2. <APP_CONFIG_DIR>/application.yaml — single project  (e.g. rest-handler, web)
-        #   3. Neither found                     — frontend / no-config service → skip
+        # ── Validate service.yaml exists in repo checkout ────────────────
+        [ -f "services/$SERVICE/service.yaml" ] || {
+          echo "  ✖  FAILED: services/$SERVICE/service.yaml not found in repo"
+          FAILED="$FAILED $SERVICE"
+          continue
+        }
+
+        # ── Read countries defined in service.yaml ───────────────────────
+        SERVICE_COUNTRIES=$(yq '.countries | keys | .[]' "services/$SERVICE/service.yaml" 2>/dev/null)
+        if [ -z "$SERVICE_COUNTRIES" ]; then
+          echo "  ✖  FAILED: no countries defined in services/$SERVICE/service.yaml"
+          FAILED="$FAILED $SERVICE"
+          continue
+        fi
+
+        # ── Detect application.yaml source (once per service) ────────────
         _app_src=""
         if [ -f "${SERVICE}/application.yaml" ]; then
           _app_src="${SERVICE}/application.yaml"
@@ -93,99 +101,74 @@
           _app_src="${APP_CONFIG_DIR:-.}/application.yaml"
         fi
 
+        # ── Copy application config for every country ────────────────────
         if [ -n "$_app_src" ]; then
-          echo "  ↑  Syncing ${_app_src} → services/$SERVICE/application.${COUNTRY}.yaml"
-          scp -i "$SSH_PRIVATE_KEY" \
-              -o StrictHostKeyChecking=no \
-              "$_app_src" \
-              "$DEPLOY_USER@$DEPLOY_HOST:$K8S_DIR/services/$SERVICE/application.${COUNTRY}.yaml" \
-            || {
-              echo "  ✖  FAILED: could not sync application config for $SERVICE"
-              FAILED="$FAILED $SERVICE"
-              continue
-            }
-          echo "  ✔  Config synced: ${_app_src} → application.${COUNTRY}.yaml"
+          for _c in $SERVICE_COUNTRIES; do
+            echo "  ↑  Syncing ${_app_src} → services/$SERVICE/application.${_c}.yaml"
+            scp -i "$SSH_PRIVATE_KEY" \
+                -o StrictHostKeyChecking=no \
+                "$_app_src" \
+                "$DEPLOY_USER@$DEPLOY_HOST:$K8S_DIR/services/$SERVICE/application.${_c}.yaml" \
+              || {
+                echo "  ✖  FAILED: could not sync application config for $SERVICE [$_c]"
+                FAILED="$FAILED $SERVICE"
+                continue 2
+              }
+            echo "  ✔  Config synced → application.${_c}.yaml"
+          done
         else
           echo "  ⊘  No application.yaml found — skipping config sync for $SERVICE"
         fi
 
-        # ── SSH: validate, tag-update, deploy ─────────────────────────
-        set +e
-        ssh -i "$SSH_PRIVATE_KEY" \
-            -o StrictHostKeyChecking=no \
-            -o ConnectTimeout=15 \
-            -o ServerAliveInterval=30 \
-            -o ServerAliveCountMax=6 \
-            "$DEPLOY_USER@$DEPLOY_HOST" "
-          set -euo pipefail
-          cd \"$K8S_DIR\"
+        # ── SSH: update tag in service.yaml, then deploy every country ───
+        for COUNTRY in $SERVICE_COUNTRIES; do
+          echo "  ▶  deploying $SERVICE [$COUNTRY]"
+          set +e
+          ssh -i "$SSH_PRIVATE_KEY" \
+              -o StrictHostKeyChecking=no \
+              -o ConnectTimeout=15 \
+              -o ServerAliveInterval=30 \
+              -o ServerAliveCountMax=6 \
+              "$DEPLOY_USER@$DEPLOY_HOST" "
+            set -euo pipefail
+            cd \"$K8S_DIR\"
 
-          # ── Validate service directory ──────────────────────────
-          [ -d services/$SERVICE ] || {
-            echo '  ERROR: services/$SERVICE not found'
-            exit 1
-          }
+            # ── Validate service directory and country block ──────────
+            [ -d services/$SERVICE ] || { echo '  ERROR: services/$SERVICE not found'; exit 1; }
+            [ -f services/$SERVICE/service.yaml ] || { echo '  ERROR: service.yaml missing for $SERVICE'; exit 1; }
 
-          # ── Validate service.yaml exists ────────────────────────
-          [ -f services/$SERVICE/service.yaml ] || {
-            echo '  ERROR: service.yaml not found for $SERVICE'
-            echo '         Run: kubeforge $SERVICE --country $COUNTRY --init'
-            exit 1
-          }
+            _cnt=\$(yq '.countries.$COUNTRY' services/$SERVICE/service.yaml 2>/dev/null)
+            if [ \"\$_cnt\" = 'null' ] || [ -z \"\$_cnt\" ]; then
+              echo '  ERROR: Country $COUNTRY not in service.yaml for $SERVICE'
+              exit 1
+            fi
 
-          # ── Validate country is defined in service.yaml ─────────
-          _cnt=\$(yq '.countries.$COUNTRY' services/$SERVICE/service.yaml 2>/dev/null)
-          if [ \"\$_cnt\" = 'null' ] || [ -z \"\$_cnt\" ]; then
-            echo '  ERROR: Country $COUNTRY not defined in service.yaml for $SERVICE'
-            echo '         Run: kubeforge $SERVICE --country $COUNTRY --init'
-            exit 1
+            # ── Save previous tag, write new tag ─────────────────────
+            _prev=\$(yq '.tag' services/$SERVICE/service.yaml 2>/dev/null || echo '')
+            if [ -n \"\$_prev\" ] && [ \"\$_prev\" != 'null' ]; then
+              yq -i '.previous_tag = \"'\$_prev'\"' services/$SERVICE/service.yaml
+            fi
+            yq -i '.tag = \"$CI_COMMIT_TAG\"' services/$SERVICE/service.yaml
+            echo \"  tag=$CI_COMMIT_TAG  →  services/$SERVICE/service.yaml\"
+
+            # ── Deploy ───────────────────────────────────────────────
+            CI=true ./deploy.sh $SERVICE --country $COUNTRY
+          "
+          EXIT=$?
+          set -e
+
+          if [ $EXIT -eq 0 ]; then
+            echo "  ✔  OK: $SERVICE [$COUNTRY]"
+          else
+            echo "  ✖  FAILED: $SERVICE [$COUNTRY]  (exit $EXIT)"
+            FAILED="$FAILED ${SERVICE}:${COUNTRY}"
           fi
-
-          # ── Save previous tag for reference ─────────────────────
-          _prev=\$(yq \".countries.$COUNTRY.tag\" services/$SERVICE/service.yaml 2>/dev/null || echo '')
-          if [ -n \"\$_prev\" ] && [ \"\$_prev\" != 'null' ]; then
-            yq -i \".countries.$COUNTRY.previous_tag = \\\"\$_prev\\\"\" services/$SERVICE/service.yaml
-          fi
-
-          # ── Update tag in service.yaml ──────────────────────────
-          yq -i \".countries.$COUNTRY.tag = \\\"$CI_COMMIT_TAG\\\"\" services/$SERVICE/service.yaml
-          echo '  tag=$CI_COMMIT_TAG  →  services/$SERVICE/service.yaml  [countries.$COUNTRY]'
-
-          # ── Deploy ──────────────────────────────────────────────
-          CI=true ./deploy.sh $SERVICE --country $COUNTRY
-        "
-        EXIT=$?
-        set -e
-
-        if [ $EXIT -eq 0 ]; then
-          echo "  ✔  OK: $SERVICE [$COUNTRY]"
-        else
-          echo "  ✖  FAILED: $SERVICE [$COUNTRY]  (exit $EXIT)"
-          FAILED="$FAILED $SERVICE"
-        fi
+        done
         echo ""
       done
 
       if [ -n "$FAILED" ]; then
-        echo "  ✖  Failed services:$FAILED"
+        echo "  ✖  Failed:$FAILED"
         exit 1
       fi
-      echo "  ✔  All deployed — Tag=$CI_COMMIT_TAG  Country=$COUNTRY"
-
-# ── Tanzania — runs ONLY when COUNTRY=tz ─────────────────────────
-deploy-tz:
-  extends: .deploy-common
-  environment:
-    name: tanzania
-  rules:
-    - if: '$COUNTRY == "tz"'
-    - when: never
-
-# ── Togo — runs ONLY when COUNTRY=tg ─────────────────────────────
-deploy-tg:
-  extends: .deploy-common
-  environment:
-    name: togo
-  rules:
-    - if: '$COUNTRY == "tg"'
-    - when: never
+      echo "  ✔  All deployed — Tag=$CI_COMMIT_TAG"

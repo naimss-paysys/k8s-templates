@@ -2,36 +2,37 @@
 name: dashboard-job-processor
 image: dashboard-job-processor
 port: 8085
-environment: test
-config_version: v1
-
-
+namespace: test-mmp
+tag: 1.0.15-tz
+replicas: 1
+host_alias_ip: 10.245.0.169
+config_version: v2
 rollout_timeout: 60
-
 routing:
   prefix: /dashboard-job-processor/
   rewrite: /
-
 # resources:
 #   cpu: 200m/500m
 #   memory: 512Mi/1Gi
-
 # scaling:
 #   min: 1
 #   max: 4
 #   cpu_threshold: 70
 #   mem_threshold: 75
-
 secrets:
   - my-registry-secret
   - dashboard-application-secrets
   - elk-credentials
   - mixxmmp-tls-secret
-
 countries:
   tz:
-    namespace: test-mmp
-    tag: 1.0.15-tz
-    replicas: 1
     ambassador_host: mixxmmp-test.tigo.co.tz
-    host_alias_ip: 10.245.0.169
+    country: tz
+    tls_secret: mixxmmp-tls-secret
+    tag: 1.0.32-TZ
+    configmap_full_name: dashboard-job-processor-config-tz-v2-1.0.32-tz
+    previous_tag: 1.0.29-TZ
+  tg:
+    ambassador_host: togo.mixx.tg
+    country: tg
+    tls_secret: tg-tls

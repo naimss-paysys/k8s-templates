@@ -1,0 +1,14 @@
+apiVersion: getambassador.io/v3alpha1
+kind: Host
+metadata:
+  name: tg-host
+  namespace: test-mmp
+spec:
+  hostname: togo.mixx.tg
+  tlsSecret:
+    name: tg-tls
+  tls:
+    min_tls_version: v1.2
+  requestPolicy:
+    insecure:
+      action: Redirect

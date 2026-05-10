@@ -1,0 +1,81 @@
+# ================================================================
+# Headlamp RBAC — scoped to test-mmp only
+# ServiceAccount Headlamp runs as + Role for namespace resources
+# ================================================================
+
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: headlamp
+  namespace: test-mmp
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: headlamp
+  namespace: test-mmp
+rules:
+  # Core resources — view
+  - apiGroups: [""]
+    resources:
+      - pods
+      - pods/log
+      - pods/exec
+      - services
+      - endpoints
+      - configmaps
+      - events
+      - serviceaccounts
+      - persistentvolumeclaims
+    verbs: ["get", "list", "watch"]
+
+  # Deployments — view + patch (needed for rolling restart)
+  - apiGroups: ["apps"]
+    resources:
+      - deployments
+      - replicasets
+      - statefulsets
+      - daemonsets
+    verbs: ["get", "list", "watch", "patch", "update"]
+
+  # HPA
+  - apiGroups: ["autoscaling"]
+    resources: ["horizontalpodautoscalers"]
+    verbs: ["get", "list", "watch"]
+
+  # Jobs
+  - apiGroups: ["batch"]
+    resources: ["jobs", "cronjobs"]
+    verbs: ["get", "list", "watch"]
+
+  # Ambassador resources — view your mappings and hosts
+  - apiGroups: ["getambassador.io"]
+    resources: ["mappings", "hosts", "tlscontexts"]
+    verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: headlamp
+  namespace: test-mmp
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: headlamp
+subjects:
+  - kind: ServiceAccount
+    name: headlamp
+    namespace: test-mmp
+
+---
+# Long-lived token secret for logging into Headlamp UI
+apiVersion: v1
+kind: Secret
+metadata:
+  name: headlamp-token
+  namespace: test-mmp
+  annotations:
+    kubernetes.io/service-account.name: headlamp
+type: kubernetes.io/service-account-token

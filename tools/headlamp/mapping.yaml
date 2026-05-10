@@ -1,0 +1,19 @@
+# ================================================================
+# Ambassador Mapping — Headlamp
+# https://mixxmmp-test.tigo.co.tz/headlamp/
+# ================================================================
+
+apiVersion: getambassador.io/v3alpha1
+kind: Mapping
+metadata:
+  name: headlamp-mapping
+  namespace: test-mmp
+spec:
+  hostname: mixxmmp-test.tigo.co.tz
+  prefix: /headlamp/
+  rewrite: /headlamp/
+  service: headlamp.test-mmp.svc.cluster.local:4466
+  timeout_ms: 0          # 0 = no timeout — required for long-lived WebSocket connections
+  idle_timeout_ms: 3600000  # 1 hour idle before Ambassador drops the WS connection
+  allow_upgrade:
+    - websocket

@@ -2,7 +2,10 @@
 name: web
 image: web-service
 port: 7033
-environment: test
+namespace: test-mmp
+tag: 1.0.0
+replicas: 1
+host_alias_ip: 10.245.0.169
 config_version: v1
 rollout_timeout: 60
 routing:
@@ -11,7 +14,6 @@ routing:
 # resources:
 #   cpu: 200m/500m
 #   memory: 256Mi/512Mi
-
 # scaling:
 #   min: 2
 #   max: 6
@@ -24,9 +26,11 @@ secrets:
   - mixxmmp-tls-secret
 countries:
   tz:
-    namespace: test-mmp
-    tag: 1.0.0
-    replicas: 1
     ambassador_host: mixxmmp-test.tigo.co.tz
-    host_alias_ip: 10.245.0.169
+    country: tz
+    tls_secret: mixxmmp-tls-secret
     configmap_full_name: web-config-tz-v1-1.0.0
+  tg:
+    ambassador_host: togo.mixx.tg
+    country: tg
+    tls_secret: tg-tls

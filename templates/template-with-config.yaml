@@ -80,8 +80,6 @@ spec:
           value: "$TAG"
         - name: CONTAINER_NAME
           value: $SERVICE_NAME
-        - name: APP_ENVIRONMENT
-          value: $ENVIRONMENT
         - name: SPRING_CONFIG_LOCATION
           value: /app/config/application.yaml
         - name: LOGGING_CONFIG
@@ -135,6 +133,10 @@ spec:
           value: "$TAG"
         - name: CONTAINER_NAME
           value: $SERVICE_NAME
+        - name: NAMESPACE
+          value: $NAMESPACE
+        - name: COUNTRY
+          value: $COUNTRY
         - name: NODE_NAME
           valueFrom:
             fieldRef:
@@ -168,7 +170,7 @@ spec:
         emptyDir: {}
       - name: tls-cert
         secret:
-          secretName: mixxmmp-tls-secret
+          secretName: $TLS_SECRET
       - name: app-config
         configMap:
           name: $CONFIGMAP_FULL_NAME

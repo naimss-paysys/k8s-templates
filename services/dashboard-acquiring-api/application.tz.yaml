@@ -412,7 +412,7 @@ mpay:
     merchant-signup: "19"
     language: English
     disable-consumer-id: MMP
-    disable-terminal-type: ""
+    disable-terminal-type: "API"
     terminal-type: API
     service-account: "25571123131"
     pin: "2026"

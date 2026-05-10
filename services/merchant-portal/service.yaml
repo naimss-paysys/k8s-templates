@@ -2,28 +2,29 @@
 name: merchant-portal
 image: merchant-portal
 port: 80
-environment: test
+namespace: test-mmp
+tag: 1.0.10-TZ
+replicas: 1
+host_alias_ip: 10.245.0.169
 config_version: v1
-
 rollout_timeout: 60
-
 routing:
   prefix: /merchant-portal/
   rewrite: /
-
 # scaling:
 #   min: 2
 #   max: 6
 #   cpu_threshold: 70
 #   mem_threshold: 80
-
 secrets:
   - my-registry-secret
-
 countries:
   tz:
-    namespace: test-mmp
-    tag: 1.0.10-TZ
-    replicas: 1
     ambassador_host: mixxmmp-test.tigo.co.tz
-    host_alias_ip: 10.245.0.169
+    country: tz
+    tls_secret: mixxmmp-tls-secret
+    tag: 1.0.11
+  tg:
+    ambassador_host: togo.mixx.tg
+    country: tg
+    tls_secret: tg-tls

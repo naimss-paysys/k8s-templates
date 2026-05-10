@@ -40,7 +40,8 @@ password:
   reset:
     token-expiration-minutes: 1440
 jwt:
-  expiration-ms: 86400000  # 24 hours (24 * 60 * 60 * 1000)
+  expiration-ms: 3600000 # 1 hour
+  refresh-expiration-ms: 86400000 # 24 hours (24 * 60 * 60 * 1000)
   # Other common values:
   # 3600000   = 1 hour
   # 7200000   = 2 hours
@@ -150,7 +151,7 @@ email:
   from_email: watcher@paysyslabs.com
   url: ${EMAIL_SERVICE_URL:http://10.0.150.16:7034/api/EmailService}
   change:
-    password_backoffice: http://10.0.150.16:3000
+    password_backoffice: http://localhost:5173
     password_portal: http://localhost:6097
 user:
   backoffice:
@@ -195,7 +196,7 @@ security:
   login:
     max-failures: 5
     lock-duration-minutes: 1 # in minutes
-aggregator : Faisal Bank Limited
+aggregator : AXIAN
 
 rate-limit:
   max-requests: 5 # MAX VALUE PERE REQUEST
@@ -363,10 +364,29 @@ notification:
 
 
 external-api:
+  auth:
+    username: "mixx.merchant"
+    password: "GoMixx@2026"
+    agent-msisdn: "255716761995"
+    consumer-id: "MixxMerchantPlatform"
 
   requests:
+    change-group-id:
+      tran-type: "axian-core-change-group-id-staging"
+
+    kyc-upgrade:
+      tran-type: "axian-kyc-upgrade"
+
+
     engrafi:
       tran-type: "axian-engrafi-staging"
+    account-status:
+      tran-type: "axian-check-account-status"
+    balance-inquiry:
+      tran-type: "axian-check-balance-inquiry"
+
+
+
 
 payment:
   cashout:

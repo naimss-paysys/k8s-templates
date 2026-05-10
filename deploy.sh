@@ -144,7 +144,6 @@ if [[ "$SERVICE" == "help" || "$SERVICE" == "--help" || "$SERVICE" == "-h" ]]; t
   printf "     ${GREEN}%-22s${NC} %s\n" "name"           "service name (matches Deployment + Service name)"
   printf "     ${GREEN}%-22s${NC} %s\n" "image"          "container image name"
   printf "     ${GREEN}%-22s${NC} %s\n" "port"           "container port"
-  printf "     ${GREEN}%-22s${NC} %s\n" "environment"    "test / staging / prod"
   echo ""
   echo -e "  ${BOLD}${WHITE}Required (under countries.<code>)${NC}"
   printf "     ${GREEN}%-22s${NC} %s\n" "namespace"      "kubernetes namespace for this country"
@@ -315,7 +314,6 @@ if [ "$ACTION" != "--init" ]; then
   [ -z "${TAG:-}"          ] && MISSING="${MISSING}\n     tag (under countries.${COUNTRY:-base})"
   [ -z "${PORT:-}"         ] && MISSING="${MISSING}\n     port"
   [ -z "${NAMESPACE:-}"    ] && MISSING="${MISSING}\n     namespace (under countries.${COUNTRY:-base})"
-  [ -z "${ENVIRONMENT:-}"  ] && MISSING="${MISSING}\n     environment"
 
   if [ -n "$MISSING" ]; then
     error_banner "Missing required values" "Check ${SERVICE_DIR}/service.yaml"

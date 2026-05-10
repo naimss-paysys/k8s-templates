@@ -1,0 +1,210 @@
+# ================================================================
+# FILE: elk-shared.yaml
+# Apply this ONCE across the entire namespace.
+# Never edited per service.
+#
+# Contains:
+#   1. elk-credentials        — Secret    — ES username + password
+#   2. shared-logback         — ConfigMap — logback.xml all services mount
+#   3. shared-filebeat-config — ConfigMap — filebeat.yml all sidecars mount
+# ================================================================
+
+# ----------------------------------------------------------------
+# 1. elk-credentials (Secret)
+#
+#    Single source of truth for ES credentials.
+#    Filebeat sidecar in every pod reads ELK_USERNAME and
+#    ELK_PASSWORD from here — never hardcoded in any deployment.
+# ----------------------------------------------------------------
+apiVersion: v1
+kind: Secret
+metadata:
+  name: elk-credentials
+  namespace: test-mmp-tg
+type: Opaque
+stringData:
+  ELK_USERNAME: "Osama.siraj"
+  ELK_PASSWORD: "ANjK4by2y6qRepqYSpPX"
+---
+# ----------------------------------------------------------------
+# 2. shared-logback (ConfigMap)
+#
+#    Mounted by every service at /app/config/logback.xml.
+#    Uses three env vars injected by each deployment:
+#
+#      SERVICE_NAME    — names the log file, e.g. payment-service-json.log
+#      APP_VERSION     — embedded in every log document for filtering
+#      APP_ENVIRONMENT — environment tag (test / staging / prod)
+#
+#    Log timestamp format: yyyy-MM-dd HH:mm:ss.SSS
+#      e.g.  2024-01-15 14:32:01.123
+#
+#    Appenders:
+#      STDOUT    — plain text  → kubectl logs <pod> -c <app-container>
+#      JSON_FILE — structured JSON → Filebeat sidecar → Elasticsearch
+# ----------------------------------------------------------------
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shared-logback
+  namespace: test-mmp-tg
+data:
+  logback.xml: |
+    <configuration>
+
+      <!-- ── STDOUT ─────────────────────────────────────────────────
+           Plain text for quick debugging.
+           Sample line:
+             2024-01-15 14:32:01.123 [http-nio-8080-exec-1] INFO  [PaymentController] - Payment processed
+      ──────────────────────────────────────────────────────────────── -->
+      <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+          <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS, Asia/Karachi} [%thread] %-5level [%c{0}] - %msg%n</pattern>
+        </encoder>
+      </appender>
+
+      <!-- ── JSON_FILE ──────────────────────────────────────────────
+           Each log line is a valid JSON object.
+           Filebeat tails this file and ships each line to ES.
+
+           Fields on every document in Elasticsearch:
+             @timestamp      — log event time (from logback, not ingest time)
+             level           — INFO / WARN / ERROR / DEBUG
+             logger_name     — Java class that logged the message
+             message         — the actual log message
+             service         — e.g. "payment-service"
+             environment     — e.g. "test"
+             version         — e.g. "1.0.0" (for filtering by release)
+             user            — from MDC (if your app sets it)
+             ipaddress       — from MDC (if your app sets it)
+             trackingNumber  — from MDC (if your app sets it)
+      ──────────────────────────────────────────────────────────────── -->
+      <appender name="JSON_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>/logs/${SERVICE_NAME}-json.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+          <fileNamePattern>/logs/${SERVICE_NAME}-json.%d{yyyy-MM-dd}.log</fileNamePattern>
+          <maxHistory>7</maxHistory>
+          <totalSizeCap>500MB</totalSizeCap>
+        </rollingPolicy>
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+          <timeZone>Asia/Karachi</timeZone>
+          <!-- Static fields embedded in every log document -->
+          <customFields>{"service":"${SERVICE_NAME}","environment":"${APP_ENVIRONMENT:-test}","version":"${APP_VERSION:-unknown}"}</customFields>
+          <fieldNames>
+            <!-- @timestamp comes from the log event, not ES ingest time -->
+            <timestamp>@timestamp</timestamp>
+            <!-- version field from logstash encoder clashes with our APP_VERSION, suppress it -->
+            <version>[ignore]</version>
+          </fieldNames>
+          <!-- MDC fields — populated by your app via MDC.put("user", ...) etc. -->
+          <includeMdcKeyName>user</includeMdcKeyName>
+          <includeMdcKeyName>ipaddress</includeMdcKeyName>
+          <includeMdcKeyName>trackingNumber</includeMdcKeyName>
+        </encoder>
+      </appender>
+
+      <!-- Async wrapper — app threads never block waiting for disk I/O.
+           discardingThreshold 0 means never drop logs even when queue is full. -->
+      <appender name="ASYNC_JSON" class="ch.qos.logback.classic.AsyncAppender">
+        <appender-ref ref="JSON_FILE" />
+        <queueSize>512</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+      </appender>
+
+      <root level="INFO">
+        <appender-ref ref="STDOUT" />
+        <appender-ref ref="ASYNC_JSON" />
+      </root>
+
+      <!-- Suppress noisy framework loggers -->
+      <logger name="com.zaxxer.hikari" level="INFO" />
+      <logger name="org.postgresql" level="INFO" />
+      <logger name="org.springframework.boot.actuate.audit.listener" level="ERROR" />
+      <logger name="org.apache.http.client.protocol.RequestAttributeAuthentication" level="ERROR" />
+
+    </configuration>
+
+---
+# ----------------------------------------------------------------
+# 3. shared-filebeat-config (ConfigMap)
+#
+#    Mounted by the Filebeat sidecar in every pod.
+#    Uses filestream input (modern replacement for log type —
+#    better offset tracking, cleaner log rotation handling).
+#
+#    Fields added to every document:
+#      service         — from SERVICE_NAME env var (e.g. payment-service)
+#      version         — from APP_VERSION env var (e.g. 1.0.0)
+#      environment     — "test"
+#      namespace       — "test-mmp"
+#      node_name       — K8s node the pod is running on
+#      pod_name        — pod name
+#      container_name  — always "filebeat" here but set explicitly for clarity
+#
+#    Index naming:
+#      Pattern:  <service-name>-yyyy.MM.dd
+#      Example:  payment-service-2024.01.15
+#
+#    Index template:
+#      Name:    "test-mmp-services"   — scoped to this namespace, not global
+#      Pattern: "test-mmp-*"          — tight match, won't touch other indices
+# ----------------------------------------------------------------
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shared-filebeat-config
+  namespace: test-mmp-tg
+data:
+  filebeat.yml: |
+    filebeat.inputs:
+    - type: filestream            # modern input type (replaces deprecated 'log')
+      id: app-json-logs           # unique ID required by filestream
+      enabled: true
+      paths:
+        - /logs/${SERVICE_NAME}-json*.log
+
+      # Parse each line as JSON and promote all keys to the document root
+      parsers:
+        - ndjson:
+            keys_under_root: true
+            overwrite_keys: true
+            add_error_key: true
+            expand_keys: true
+
+      # Fields added alongside the parsed JSON on every document
+      fields_under_root: true
+      fields:
+        namespace:      "${NAMESPACE}"
+        environment:    "${COUNTRY}"
+        node_name:      "${NODE_NAME}"
+        pod_name:       "${POD_NAME}"
+        container_name: "${CONTAINER_NAME}"
+        version:        "${APP_VERSION}"
+
+      # filestream offset tracking — stored in filebeat-registry volume
+      # Survives log rotation, no duplicate shipping on pod restart
+      prospector.scanner.fingerprint.enabled: true
+      file_identity.fingerprint: ~
+
+    processors:
+      - add_host_metadata:
+          when.not.contains.tags: forwarded
+
+    output.elasticsearch:
+      hosts: ["https://10.33.15.15:9200"]
+      username: "${ELK_USERNAME}"
+      password: "${ELK_PASSWORD}"
+      ssl.verification_mode: none
+      # Dynamic index: e.g. payment-service-2024.01.15
+      index: "${SERVICE_NAME}-${COUNTRY}-%{+yyyy.MM.dd}"
+
+    # Index template disabled — requires ES admin privileges we don't have.
+    # ES will auto-create indices with default settings on first log document.
+    # This is fine for test-mmp. If you ever need custom shard/replica
+    # settings, ask your ES admin to apply the template once manually.
+    setup.template.enabled: false
+
+    setup.ilm.enabled: false
+
+    logging.level: info
+    logging.to_stderr: true

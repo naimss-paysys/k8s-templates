@@ -49,11 +49,6 @@ spec:
           value: "$TAG"
         - name: CONTAINER_NAME
           value: $SERVICE_NAME
-        - name: APP_ENVIRONMENT
-          value: $ENVIRONMENT
-        envFrom:
-        - secretRef:
-            name: dashboard-application-secrets
         resources:
           requests:
             cpu: $CPU_REQUEST
@@ -85,6 +80,10 @@ spec:
           value: "$TAG"
         - name: CONTAINER_NAME
           value: $SERVICE_NAME
+        - name: NAMESPACE
+          value: $NAMESPACE
+        - name: COUNTRY
+          value: $COUNTRY
         - name: NODE_NAME
           valueFrom:
             fieldRef:

@@ -1,7 +1,7 @@
 apiVersion: getambassador.io/v3alpha1
 kind: Mapping
 metadata:
-  name: $SERVICE_NAME-mapping
+  name: $SERVICE_NAME-$COUNTRY-mapping
   namespace: $NAMESPACE
 spec:
   host: "$AMBASSADOR_HOST"
