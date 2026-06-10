@@ -12,7 +12,7 @@ do_restart() {
 
   local RESTART_OUTPUT RESTART_EXIT
   set +e
-  RESTART_OUTPUT=$(kubectl rollout restart "deployment/${SERVICE_NAME}" -n "$NAMESPACE" 2>&1)
+  RESTART_OUTPUT=$(kubectl rollout restart "deployment/${DEPLOY_NAME}" -n "$NAMESPACE" 2>&1)
   RESTART_EXIT=$?
   set -e
 
@@ -29,9 +29,9 @@ do_restart() {
   divider
   echo -e "  ${DIM}Waiting for restart to complete...${NC}"
   echo ""
-  kubectl rollout status "deployment/${SERVICE_NAME}" -n "$NAMESPACE"
+  kubectl rollout status "deployment/${DEPLOY_NAME}" -n "$NAMESPACE"
   _KFORGE_STATUS="SUCCESS"
-  success_banner "$SERVICE_NAME restarted successfully"
+  success_banner "$DEPLOY_NAME restarted successfully"
 }
 
 do_rollback() {
@@ -42,7 +42,7 @@ do_rollback() {
 
   local RB_OUTPUT RB_EXIT
   set +e
-  RB_OUTPUT=$(kubectl rollout undo "deployment/${SERVICE_NAME}" -n "$NAMESPACE" 2>&1)
+  RB_OUTPUT=$(kubectl rollout undo "deployment/${DEPLOY_NAME}" -n "$NAMESPACE" 2>&1)
   RB_EXIT=$?
   set -e
 
@@ -59,7 +59,7 @@ do_rollback() {
   divider
   echo -e "  ${DIM}Waiting for rollback to stabilize...${NC}"
   echo ""
-  kubectl rollout status "deployment/${SERVICE_NAME}" -n "$NAMESPACE"
+  kubectl rollout status "deployment/${DEPLOY_NAME}" -n "$NAMESPACE"
   _KFORGE_STATUS="SUCCESS"
-  success_banner "$SERVICE_NAME rolled back successfully"
+  success_banner "$DEPLOY_NAME rolled back successfully"
 }

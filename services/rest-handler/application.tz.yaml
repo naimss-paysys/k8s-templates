@@ -1,5 +1,5 @@
 logging:
-  config: file:/app/logback.xml
+  config: file:/app/config/logback.xml
 
 certificate:
   require: false
@@ -73,7 +73,7 @@ spring:
       max-lifetime: 1800000
       leak-detection-threshold: 60000
   jpa:
-    show-sql: true
+    show-sql: false
     generate-ddl: false
     open-in-view: false
     database-platform: org.hibernate.dialect.PostgreSQLDialect

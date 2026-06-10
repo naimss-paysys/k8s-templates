@@ -13,7 +13,7 @@ server:
   max-http-request-header-size: 64KB
   servlet:
     session:
-      timeout: 5000
+      timeout: 15000
       cookie:
         secure: true
 
@@ -28,9 +28,6 @@ springdoc:
 
 swagger:
   enabled: true
-file:
-  upload:
-    upload-dir: /data/documents/
 
 # CORS Configuration
 allowedHeaders: 'Authorization,Content-Type,X-Requested-With,Accept,Origin,Access-Control-Allow-Origin,Access-Control-Allow-Credentials,X-API-Key'
@@ -111,7 +108,7 @@ spring:
   jpa:
     generate-ddl: false
     hibernate:
-      ddl-auto: update
+      ddl-auto: none
     show-sql: false
     properties:
       hibernate:
@@ -307,6 +304,18 @@ two-fa:
   public-key-path: D:\keys\key-public.pem
   time-left: 60 # in seconds e.g. 60 secs
 
+external-api:
+  auth:
+    username: "mixx.merchant"
+    password: "GoMixx@2026"
+    agent-msisdn: "255716761995"
+    consumer-id: "MixxMerchantPlatform"
+
+  requests:
+
+    togo-send-money:
+      tran-type: "togo-send-money"
+
 
 wallet:
   api:
@@ -339,6 +348,10 @@ pin:
       id: ${PIN_CONSUMER_ID:mfs_app_new}
     country: ${PIN_COUNTRY:TZA}
 
+dynamic:
+  lists:
+    config:
+      path: "dynamic-lists.json"
 
 flowable:
   enabled: true
@@ -369,6 +382,8 @@ handler:
       serviceAccount: 25571123131
       pin: 2026
       language: English
+      send-email-service: axian-send-email
+      from-email: mixxbyyas.service@mixx.co.tz
       merchantSignup: 19
       disable-consumer-id: MMP
 
@@ -378,6 +393,7 @@ handler:
 # used by MpayServiceLayer are defined here.
 # ===============================
 mpay:
+  country: TZA   # Controls which MpayServiceLayer impl is loaded at startup (TZA, KEN, etc.)
   services:
     create-account: axian-mmp-create-handler
     change-pin: axian-change-pin
@@ -448,9 +464,15 @@ notification:
 # Request body field decryption
 decryption:
   enabled: false                 # set to true when acquiring-api clients send encrypted fields
-  fields: sourcePIN,pin,password,oldPassword,newPassword,confirmPassword
+  fields: sourcePIN,pin,password,oldPassword,newPassword,confirmPassword,newPin,currentPin,confirmPin
   excluded-path-prefixes:       # path prefixes to skip decryption
   #  - /api/v1/public
   #  - /actuator
 
-
+file:
+  upload:
+    upload-dir: /data/documents/
+clamav:
+  enabled: ${CLAMAV_TOGGLE:true}
+  host: ${CLAMAV_HOST:localhost}
+  port: ${CLAMAV_PORT:3310}

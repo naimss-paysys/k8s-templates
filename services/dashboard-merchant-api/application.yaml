@@ -437,6 +437,11 @@ external-api:
       tran-type: "axian-mmp-get-user-status"
     balance-inquiry:
       tran-type: "axian-check-balance-inquiry"
+    
+    togo-engrafi:
+      tran-type: "togo-check-subscriber-status"
+    togo-balance-inquiry:
+      tran-type : "togo-merchant-balance"
 
 # Request body field decryption
 decryption:

@@ -5,15 +5,15 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: $SERVICE_NAME
+  name: $SERVICE_NAME-$COUNTRY
   namespace: $NAMESPACE
   labels:
-    app: $SERVICE_NAME
+    app: $SERVICE_NAME-$COUNTRY
 spec:
   replicas: $REPLICAS
   selector:
     matchLabels:
-      app: $SERVICE_NAME
+      app: $SERVICE_NAME-$COUNTRY
   strategy:
     type: RollingUpdate
     rollingUpdate:
@@ -22,7 +22,7 @@ spec:
   template:
     metadata:
       labels:
-        app: $SERVICE_NAME
+        app: $SERVICE_NAME-$COUNTRY
     spec:
       hostAliases:
         - ip: "$HOST_ALIAS_IP"
@@ -38,6 +38,8 @@ spec:
                     values:
                       - eksa01-dev-cluster-md-0-jgw6t-fqvnv
                       - eksa01-dev-cluster-md-0-jgw6t-z8sqz
+                      - eksa01-dev-cluster-md-0-458rj-hxdpd
+                      - eksa01-dev-cluster-md-0-458rj-jrlm8
       imagePullSecrets:
       - name: my-registry-secret
       initContainers:
@@ -75,11 +77,11 @@ spec:
         - containerPort: $PORT
         env:
         - name: SERVICE_NAME
-          value: $SERVICE_NAME
+          value: $SERVICE_NAME-$COUNTRY
         - name: APP_VERSION
           value: "$TAG"
         - name: CONTAINER_NAME
-          value: $SERVICE_NAME
+          value: $SERVICE_NAME-$COUNTRY
         - name: SPRING_CONFIG_LOCATION
           value: /app/config/application.yaml
         - name: LOGGING_CONFIG
@@ -104,6 +106,12 @@ spec:
         - name: tls-cert
           mountPath: /certs
           readOnly: true
+        - name: dynamic-lists-config          # <-- ADD THIS
+          mountPath: /app/dynamic-lists.json
+          subPath: dynamic-lists.json
+        - name: report-queries-config         # <-- ADD THIS
+          mountPath: /app/report-queries.yml
+          subPath: report-queries.yml
         - name: app-config
           mountPath: /app/config/application.yaml
           subPath: application.yaml
@@ -128,11 +136,11 @@ spec:
               name: elk-credentials
               key: ELK_PASSWORD
         - name: SERVICE_NAME
-          value: $SERVICE_NAME
+          value: $SERVICE_NAME-$COUNTRY
         - name: APP_VERSION
           value: "$TAG"
         - name: CONTAINER_NAME
-          value: $SERVICE_NAME
+          value: $SERVICE_NAME-$COUNTRY
         - name: NAMESPACE
           value: $NAMESPACE
         - name: COUNTRY
@@ -171,6 +179,12 @@ spec:
       - name: tls-cert
         secret:
           secretName: $TLS_SECRET
+      - name: report-queries-config
+        configMap:
+          name: report-queries-configmap
+      - name: dynamic-lists-config
+        configMap:
+          name: dynamic-lists-configmap
       - name: app-config
         configMap:
           name: $CONFIGMAP_FULL_NAME
@@ -189,11 +203,11 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: $SERVICE_NAME-service
+  name: $SERVICE_NAME-$COUNTRY-service
   namespace: $NAMESPACE
 spec:
   selector:
-    app: $SERVICE_NAME
+    app: $SERVICE_NAME-$COUNTRY
   ports:
   - port: $PORT
     targetPort: $PORT

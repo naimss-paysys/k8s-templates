@@ -89,13 +89,13 @@ show_diff() {
 # ── Diagnostics ───────────────────────────────────────────────────
 show_diagnostics() {
   local POD
-  POD=$(kubectl get pods -n "$NAMESPACE" -l "app=${SERVICE_NAME}" \
+  POD=$(kubectl get pods -n "$NAMESPACE" -l "app=${DEPLOY_NAME}" \
     -o jsonpath='{range .items[*]}{.status.containerStatuses[0].state.waiting.reason}{" "}{.metadata.name}{"\n"}{end}' 2>/dev/null \
     | grep -E "ImagePullBackOff|ErrImagePull|CrashLoopBackOff|CreateContainerConfigError|Pending" \
     | awk '{print $2}' | head -n 1) || POD=""
 
   if [ -z "$POD" ]; then
-    POD=$(kubectl get pods -n "$NAMESPACE" -l "app=${SERVICE_NAME}" \
+    POD=$(kubectl get pods -n "$NAMESPACE" -l "app=${DEPLOY_NAME}" \
       --sort-by=.metadata.creationTimestamp \
       -o jsonpath='{.items[-1].metadata.name}' 2>/dev/null) || POD=""
   fi
@@ -126,7 +126,7 @@ watch_rollout() {
   echo -e "  ${DIM}Waiting for rollout (max ${TIMEOUT}s)...${NC}"
   divider
 
-  kubectl rollout status "deployment/${SERVICE_NAME}" -n "$NAMESPACE" &
+  kubectl rollout status "deployment/${DEPLOY_NAME}" -n "$NAMESPACE" &
   local ROLLOUT_PID=$!
 
   local WATCH_START NOW ELAPSED
@@ -146,7 +146,7 @@ watch_rollout() {
       error_banner "Rollout Timeout" "Deployment stuck for ${TIMEOUT}s"
       show_diagnostics
       echo -e "\n  ${YELLOW}↩ REVERTING:${NC} Undoing deployment to maintain service stability."
-      kubectl rollout undo "deployment/${SERVICE_NAME}" -n "$NAMESPACE" || true
+      kubectl rollout undo "deployment/${DEPLOY_NAME}" -n "$NAMESPACE" || true
       exit 1
     fi
     sleep 2
@@ -160,7 +160,7 @@ watch_rollout() {
 # ── Pod status table ──────────────────────────────────────────────
 show_pod_status() {
   section_header "Live Pods"
-  kubectl get pods -n "$NAMESPACE" -l "app=${SERVICE_NAME}" 2>/dev/null \
+  kubectl get pods -n "$NAMESPACE" -l "app=${DEPLOY_NAME}" 2>/dev/null \
     | sed 's/^/  /' \
     || echo -e "  ${DIM}No pods found${NC}"
   echo ""
@@ -380,24 +380,24 @@ do_status() {
     "Namespace  :  $NAMESPACE"
 
   section_header "Pods"
-  kubectl get pods -n "$NAMESPACE" -l "app=${SERVICE_NAME}" 2>/dev/null \
+  kubectl get pods -n "$NAMESPACE" -l "app=${DEPLOY_NAME}" 2>/dev/null \
     | sed 's/^/  /' \
     || echo -e "  ${DIM}No pods found${NC}"
 
   section_header "Deployment"
-  kubectl get deployment "$SERVICE_NAME" -n "$NAMESPACE" -o wide 2>/dev/null \
+  kubectl get deployment "$DEPLOY_NAME" -n "$NAMESPACE" -o wide 2>/dev/null \
     | sed 's/^/  /' \
     || echo -e "  ${DIM}Deployment not found${NC}"
 
   section_header "Service"
-  kubectl get service "${SERVICE_NAME}-service" -n "$NAMESPACE" 2>/dev/null \
+  kubectl get service "${DEPLOY_NAME}-service" -n "$NAMESPACE" 2>/dev/null \
     | sed 's/^/  /' \
     || echo -e "  ${DIM}Service not found${NC}"
 
   if [ -n "${HPA_MIN:-}" ]; then
     section_header "HPA"
     kubectl get hpa -n "$NAMESPACE" 2>/dev/null \
-      | grep "${SERVICE_NAME}" | sed 's/^/  /' \
+      | grep "${DEPLOY_NAME}" | sed 's/^/  /' \
       || echo -e "  ${DIM}No HPA found${NC}"
   fi
 
@@ -637,7 +637,7 @@ do_deploy() {
     error_banner "Rollout Failed" "Kubernetes rejected or timed out during rollout."
     show_diagnostics
     echo -e "\n  ${YELLOW}↩ REVERTING:${NC} Rolling back to last stable state."
-    kubectl rollout undo "deployment/${SERVICE_NAME}" -n "$NAMESPACE" || true
+    kubectl rollout undo "deployment/${DEPLOY_NAME}" -n "$NAMESPACE" || true
     exit 1
   fi
 }

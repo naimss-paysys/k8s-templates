@@ -216,6 +216,12 @@ two-fa:
   public-key-path: D:\keys\key-public.pem
   time-left: 60 # in seconds e.g. 60 secs
 
+## MPay QR Generation Configuration (SQRC / DQRC)
+#mpay:
+#  qr:
+#    endpoint: ${MPAY_QR_ENDPOINT:http://localhost:8080/mpay/qr}
+#    operation: ${MPAY_QR_OPERATION:QR_GENERATE}
+
 # Bank Transfer Configuration (Telepin/MMP Integration)
 bank:
   transfer:
@@ -288,6 +294,7 @@ handler:
 # used by MpayServiceLayer are defined here.
 # ===============================
 mpay:
+  country: ${MPAY_COUNTRY:TZA}   # Controls which MpayServiceLayer impl is loaded at startup (TZA, TGO, etc.)
   services:
     create-account: axian-mmp-create-handler
     change-pin: axian-change-pin
@@ -307,7 +314,8 @@ mpay:
     transfer: axian-mmp-proxy-transfer
     inquiry: axian-transaction-query-status
     balance-inquiry: axian-check-balance-inquiry
-    initiate-rtp: axian-rtp-initiator
+    initiate-rtp: axian-biller-payment-api
+    onboarding-callback: togo-onboarding
   wallet:
     username: test_mw_osb
     password: tigo1234
@@ -316,6 +324,7 @@ mpay:
     consumer-id: TIGO
     balance-consumer-id: MWTEST
     channel-username: mixx.merchant
+    channel-pass: GoMixx@2026
     country: TZA
   handler:
     channel-user: mixx.merchant
@@ -439,12 +448,18 @@ external-api:
     consumer-id: "MixxMerchantPlatform"
 
   requests:
+    togo-engrafi:
+      tran-type: "togo-check-subscriber-status"
+    togo-balance-inquiry:
+      tran-type : "togo-merchant-balance"
     kyc-upgrade:
       tran-type: "axian-kyc-upgrade"
     engrafi:
       tran-type: "axian-engrafi-staging"
     account-status:
       tran-type: "axian-mmp-get-user-status"
+    handler-account-status:
+      tran-type: "get-handler-account-status"
     balance-inquiry:
       tran-type: "axian-check-balance-inquiry"
 
@@ -455,3 +470,13 @@ decryption:
   excluded-path-prefixes:       # path prefixes to skip decryption
   #  - /rest/public
   #  - /actuator
+
+dynamic:
+  lists:
+    config:
+      path: "dynamic-lists.json"
+
+audit_masking:
+  enabled: true
+  fields:
+    password,pin,token

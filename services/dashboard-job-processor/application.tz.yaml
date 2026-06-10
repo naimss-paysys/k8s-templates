@@ -257,7 +257,10 @@ wallet:
     channel-user: self.care.app
     channel-password: password
 
-
+dynamic:
+  lists:
+    config:
+      path: "dynamic-lists.json"
 
 # Handler Management Configuration
 handler:
@@ -269,6 +272,8 @@ handler:
       terminalType: API
       channelUser: mixx.merchant
       channelUserPin: GoMixx@2026
+      send-email-service: axian-send-email
+      from-email: mixxbyyas.service@mixx.co.tz
       serviceAccount: 
       pin: 
 
@@ -278,6 +283,7 @@ handler:
 # used by MpayServiceLayer are defined here.
 # ===============================
 mpay:
+  country: TZA  # Controls which MpayServiceLayer impl is loaded at startup (TZA, KEN, etc.)
   # All service names under one tag
   services:
     create-account: axian-mmp-create-handler
@@ -398,6 +404,9 @@ external-api:
     engrafi:
       tran-type: "axian-engrafi-staging"
 
+    alias-creation:
+      tran-type: "togo-alias-creation"
+
 
 MERCHANT_PREFIXES:
   EAN: "02501"
@@ -497,6 +506,4 @@ logging:
   level:
     root: WARN
     com.paysyslabs.dashboard.jobprocessor: INFO
-
-
 

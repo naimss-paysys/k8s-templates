@@ -169,6 +169,19 @@ jasper:
   endpoint:
     role: http://10.0.70.52:8086/jasperserver/rest_v2/roles/
     user: http://10.0.70.52:8086/jasperserver/rest_v2/users/
+
+  server:
+    base-url: https://mixxmmp-test.tigo.co.tz/jasperserver
+    username: jasperadmin
+    password: jasperadmin
+    reports-base-path: /Reports
+    api-path: /rest_v2
+
+  client:
+    connect-timeout-seconds: 1000000
+    read-timeout-seconds: 6000000
+    skip-ssl-verification: true
+
 jasper_url: http://10.0.70.52:8086/jasperserver/flow.html?_flowId=searchFlow&j_username=
 refresh_time: 2000
 
@@ -385,7 +398,13 @@ external-api:
     balance-inquiry:
       tran-type: "axian-check-balance-inquiry"
 
+    togo-engrafi:
+      tran-type: "togo-check-subscriber-status"
+    togo-balance-inquiry:
+      tran-type : "togo-merchant-balance"
 
+    togo-send-money:
+      tran-type: "togo-send-money"
 
 
 payment:
@@ -405,3 +424,20 @@ decryption:
   excluded-path-prefixes:       # path prefixes to skip decryption
   #  - /rest/public
   #  - /actuator
+
+clamav:
+  enabled: ${CLAMAV_TOGGLE:false}
+  host: ${CLAMAV_HOST:localhost}
+  port: ${CLAMAV_PORT:3310}
+# MPay Service Layer � country selector (controls which MpayServiceLayer bean is loaded)
+mpay:
+  country: TZA
+
+dynamic:
+  lists:
+    config:
+      path: "dynamic-lists.json"
+
+audit_masking:
+  enabled: true
+  fields: password,pin,token

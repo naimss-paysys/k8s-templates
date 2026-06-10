@@ -117,21 +117,21 @@ do_doctor() {
 
   # ── Service ───────────────────────────────────────────────────────
   if [ -n "${SERVICE_NAME:-}" ]; then
-    section_header "Service  [${SERVICE_NAME}]"
+    section_header "Service  [${DEPLOY_NAME}]"
 
     # Deployment readiness
-    if kubectl get deployment "$SERVICE_NAME" -n "$NAMESPACE" &>/dev/null; then
+    if kubectl get deployment "$DEPLOY_NAME" -n "$NAMESPACE" &>/dev/null; then
       local ready_r total_r
-      ready_r=$(kubectl get deployment "$SERVICE_NAME" -n "$NAMESPACE" \
+      ready_r=$(kubectl get deployment "$DEPLOY_NAME" -n "$NAMESPACE" \
         -o jsonpath='{.status.readyReplicas}' 2>/dev/null) || ready_r=0
-      total_r=$(kubectl get deployment "$SERVICE_NAME" -n "$NAMESPACE" \
+      total_r=$(kubectl get deployment "$DEPLOY_NAME" -n "$NAMESPACE" \
         -o jsonpath='{.spec.replicas}' 2>/dev/null) || total_r=0
       ready_r="${ready_r:-0}"
       if [ "$ready_r" = "$total_r" ] && [ "${total_r:-0}" -gt 0 ]; then
         _doc_pass "Deployment: ${WHITE}${ready_r}/${total_r} ready${NC}"
       else
         _doc_warn "Deployment: ${WHITE}${ready_r:-0}/${total_r:-?} ready${NC}" \
-          "kubectl describe deployment ${SERVICE_NAME} -n ${NAMESPACE}"
+          "kubectl describe deployment ${DEPLOY_NAME} -n ${NAMESPACE}"
       fi
     else
       echo -e "  ${DIM}⊘  Deployment not found — service has not been deployed yet${NC}"
@@ -139,7 +139,7 @@ do_doctor() {
 
     # Pod status
     local pod_lines
-    pod_lines=$(kubectl get pods -n "$NAMESPACE" -l "app=${SERVICE_NAME}" \
+    pod_lines=$(kubectl get pods -n "$NAMESPACE" -l "app=${DEPLOY_NAME}" \
       --no-headers 2>/dev/null) || pod_lines=""
 
     if [ -n "$pod_lines" ]; then
@@ -150,10 +150,10 @@ do_doctor() {
 
       if [ "$crash_pods" -gt 0 ]; then
         _doc_fail "Pods: ${WHITE}${running_pods} running${NC}  ${RED}${crash_pods} crashing${NC}" \
-          "kubectl logs -n ${NAMESPACE} -l app=${SERVICE_NAME} --tail=30"
+          "kubectl logs -n ${NAMESPACE} -l app=${DEPLOY_NAME} --tail=30"
       elif [ "$pending_pods" -gt 0 ]; then
         _doc_warn "Pods: ${WHITE}${running_pods} running${NC}  ${YELLOW}${pending_pods} pending${NC}" \
-          "kubectl describe pod -n ${NAMESPACE} -l app=${SERVICE_NAME}"
+          "kubectl describe pod -n ${NAMESPACE} -l app=${DEPLOY_NAME}"
       else
         _doc_pass "Pods: ${WHITE}${running_pods} running${NC}"
       fi
@@ -183,7 +183,7 @@ do_doctor() {
 
     # HPA
     if [ "${HAS_HPA:-false}" == "true" ]; then
-      if kubectl get hpa -n "$NAMESPACE" 2>/dev/null | grep -q "$SERVICE_NAME"; then
+      if kubectl get hpa -n "$NAMESPACE" 2>/dev/null | grep -q "$DEPLOY_NAME"; then
         _doc_pass "HPA active"
       else
         echo -e "  ${DIM}⊘  HPA configured in service.yaml but not yet in cluster${NC}"

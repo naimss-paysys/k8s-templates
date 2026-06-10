@@ -3,10 +3,10 @@ name: dashboard-backoffice
 image: dashboard-backoffice
 port: 5501
 namespace: test-mmp
-tag: 1.0.22-TZ
+tag: 1.0.61-TZ
 replicas: 1
 host_alias_ip: 10.245.0.169
-config_version: v3
+config_version: v9
 rollout_timeout: 60
 resources:
   cpu: 200m/800m
@@ -29,10 +29,11 @@ countries:
     ambassador_host: mixxmmp-test.tigo.co.tz
     country: tz
     tls_secret: mixxmmp-tls-secret
-    configmap_full_name: dashboard-backoffice-config-tz-v3-1.0.31-tz
-    tag: 1.0.31-TZ
-    previous_tag: 1.0.28-TZ
+    configmap_full_name: dashboard-backoffice-config-tz-v9-1.0.61-tz
+    tag: 1.0.61-TZ
+    previous_tag: 1.0.61-TZ
   tg:
     ambassador_host: togo.mixx.tg
     country: tg
     tls_secret: tg-tls
+previous_tag: 1.0.61-TZ

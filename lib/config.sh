@@ -155,6 +155,10 @@ write_configmap_full_name() {
 # ── Export all template variables ─────────────────────────────────
 _export_vars() {
   export SERVICE_NAME IMAGE TAG PORT NAMESPACE
+  # DEPLOY_NAME is the actual Kubernetes deployment/pod label name.
+  # When a country is set it becomes SERVICE_NAME-COUNTRY (e.g. backoffice-ui-tg),
+  # which matches what the templates render as the deployment name.
+  export DEPLOY_NAME="${SERVICE_NAME}${COUNTRY:+-${COUNTRY}}"
   export PREFIX="${PREFIX:-}"               REWRITE="${REWRITE:-}"
   export HPA_MIN="${HPA_MIN:-}"             HPA_MAX="${HPA_MAX:-}"
   export HPA_CPU_THRESHOLD="${HPA_CPU_THRESHOLD:-}" HPA_MEM_THRESHOLD="${HPA_MEM_THRESHOLD:-}"

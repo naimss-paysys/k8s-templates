@@ -20,7 +20,7 @@ apiVersion: v1
 kind: Secret
 metadata:
   name: elk-credentials
-  namespace: test-mmp-tg
+  namespace: test-mmp
 type: Opaque
 stringData:
   ELK_USERNAME: "Osama.siraj"
@@ -47,7 +47,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: shared-logback
-  namespace: test-mmp-tg
+  namespace: test-mmp
 data:
   logback.xml: |
     <configuration>
@@ -153,7 +153,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: shared-filebeat-config
-  namespace: test-mmp-tg
+  namespace: test-mmp
 data:
   filebeat.yml: |
     filebeat.inputs:
@@ -196,7 +196,7 @@ data:
       password: "${ELK_PASSWORD}"
       ssl.verification_mode: none
       # Dynamic index: e.g. payment-service-2024.01.15
-      index: "${SERVICE_NAME}-${COUNTRY}-%{+yyyy.MM.dd}"
+      index: "${SERVICE_NAME}-%{+yyyy.MM.dd}"
 
     # Index template disabled — requires ES admin privileges we don't have.
     # ES will auto-create indices with default settings on first log document.
