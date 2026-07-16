@@ -3,10 +3,10 @@ name: dashboard-job-processor
 image: dashboard-job-processor
 port: 8085
 namespace: test-mmp
-tag: 1.0.61-TZ
-replicas: 2
+tag: 1.0.99-TZ
+replicas: 1
 host_alias_ip: 10.245.0.169
-config_version: v3
+config_version: v4
 rollout_timeout: 60
 routing:
   prefix: /dashboard-job-processor/
@@ -29,11 +29,11 @@ countries:
     ambassador_host: mixxmmp-test.tigo.co.tz
     country: tz
     tls_secret: mixxmmp-tls-secret
-    tag: 1.0.61-TZ
-    configmap_full_name: dashboard-job-processor-config-tz-v3-1.0.61-tz
-    previous_tag: 1.0.53-TZ
+    tag: 1.0.99-TZ
+    configmap_full_name: dashboard-job-processor-config-tz-v4-1.0.99-tz
+    previous_tag: 1.0.97-TZ
   tg:
     ambassador_host: togo.mixx.tg
     country: tg
     tls_secret: tg-tls
-previous_tag: 1.0.53-TZ
+previous_tag: 1.0.97-TZ

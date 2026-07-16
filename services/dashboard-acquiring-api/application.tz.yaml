@@ -310,6 +310,7 @@ external-api:
     password: "GoMixx@2026"
     agent-msisdn: "255716761995"
     consumer-id: "MixxMerchantPlatform"
+    app-id: "tz.go.bot.tips"
 
   requests:
 
@@ -476,3 +477,7 @@ clamav:
   enabled: ${CLAMAV_TOGGLE:true}
   host: ${CLAMAV_HOST:localhost}
   port: ${CLAMAV_PORT:3310}
+
+audit_masking:
+  enabled: true
+  fields: sourcePin,pin,token,access_token    

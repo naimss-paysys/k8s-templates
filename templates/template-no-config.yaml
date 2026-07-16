@@ -32,8 +32,18 @@ spec:
                   - key: kubernetes.io/hostname
                     operator: NotIn
                     values:
+
+                      - eksa01-dev-cluster-md-0-458rj-q964l
                       - eksa01-dev-cluster-md-0-jgw6t-fqvnv
+                      - eksa01-dev-cluster-md-0-458rj-x8p7w
+                      - eksa01-dev-cluster-md-0-458rj-rsw6m
                       - eksa01-dev-cluster-md-0-jgw6t-z8sqz
+                      - eksa01-dev-cluster-md-0-458rj-hxdpd
+                      - eksa01-dev-cluster-md-0-458rj-jrlm8
+                      - eksa01-dev-cluster-md-0-458rj-8c74g
+                      - eksa01-dev-cluster-md-0-458rj-l968p
+                      - eksa01-dev-cluster-md-0-458rj-5nkt5
+                      - eksa01-dev-cluster-md-0-458rj-ph9gd
       imagePullSecrets:
       - name: my-registry-secret
       containers:

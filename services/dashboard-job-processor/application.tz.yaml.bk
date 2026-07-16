@@ -16,8 +16,7 @@ spring:
   application:
     name: dashboard-job-processor
   redis:
-#    host: ${REDIS_HOST:10.0.150.126}
-    host: ${REDIS_HOST:10.200.0.103}
+    host: ${REDIS_HOST:10.0.150.126}
     port: 6379
     password:  # Leave empty if no password
     database: 0
@@ -29,15 +28,13 @@ spring:
   datasource:
     type: com.zaxxer.hikari.HikariDataSource
     driver-class-name: org.postgresql.Driver
-#    url: ${DB_URL:jdbc:postgresql://10.0.150.11:5432/postgres?connectTimeout=10&socketTimeout=30&tcpKeepAlive=true}
-    url: ${DB_URL:jdbc:postgresql://10.245.0.12:5432/axian-uat}
+    url: ${DB_URL:jdbc:postgresql://10.0.150.11:5432/postgres?connectTimeout=10&socketTimeout=30&tcpKeepAlive=true}
     username: ${DB_USERNAME:postgres}
-#    password: ${DB_PASSWORD:postgres}
-    password: ${DB_PASSWORD:HOTZAjhJQ2toBIji}
+    password: ${DB_PASSWORD:postgres}
     hikari:
       pool-name: JobProcessorHikariPool
       minimum-idle: 2
-      maximum-pool-size: 10
+      maximum-pool-size: 100
       idle-timeout: 300000
       max-lifetime: 1200000
       connection-timeout: 30000
@@ -95,8 +92,7 @@ spring:
 
 service:
   url:
-#    queue: ${MPAY_URL:http://10.0.150.126:7033/acq/queueforwarding/}
-    queue: ${MPAY_URL:https://mixxmmp-test.tigo.co.tz/web-service/acq/queueforwarding/}
+    queue: ${MPAY_URL:http://10.0.150.126:7033/acq/queueforwarding/}
   secret: paysys@123
   timeout: 30000  # 30 seconds timeout for MPAY calls
   retry:
@@ -198,11 +194,6 @@ job-processor:
     enabled: true
     requests-per-second: 10
 
-dynamic:
-  lists:
-    config:
-      path: "dynamic-lists.json"
-
 # ===============================
 # Scheduled Payment (Settlement) Configuration
 # ===============================
@@ -246,9 +237,6 @@ payment:
 # ===============================
 transaction:
   inquiry:
-    sweep:
-      enabled: true
-      intervalMs: 120000
     inquiryMaxAttempts: ${TRANSACTION_INQUIRY_MAX_ATTEMPTS:3}
     inquiryDelayMs: ${TRANSACTION_INQUIRY_DELAY_MS:2000}
     telepin:
@@ -269,7 +257,10 @@ wallet:
     channel-user: self.care.app
     channel-password: password
 
-
+dynamic:
+  lists:
+    config:
+      path: "dynamic-lists.json"
 
 # Handler Management Configuration
 handler:
@@ -314,20 +305,19 @@ mpay:
     inquiry: ${SCHEDULED_PAYMENT_INQUIRY_SERVICE:axian-transaction-query-status}
     balance-inquiry: ${SCHEDULED_PAYMENT_BALANCE_SERVICE:axian-check-balance-inquiry}
   wallet:
-    username: test_mw_osb
-    password: tigo1234
+    username: live_mfs_app
+    password: password
     change-pin-username: mw_ath_test
     change-pin-password: TQjudc@lM$3Si
-    consumer-id: TIGO
-    balance-consumer-id: MWTEST
+    consumer-id: mfs_app_new
+    balance-consumer-id: mfs_app_new
     channel-username: mixx.merchant
-    channel-pass: GoMixx@2026
     country: TZA
   handler:
     channel-user: mixx.merchant
     channel-user-pin: GoMixx@2026
-    merchant-signup: "19"
-    language: "English"
+    merchant-signup: ""
+    language: ""
     disable-consumer-id: ""
     disable-terminal-type: ""
     terminal-type: API
@@ -516,5 +506,4 @@ logging:
   level:
     root: WARN
     com.paysyslabs.dashboard.jobprocessor: INFO
-
 

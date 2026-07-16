@@ -27,9 +27,7 @@ do_restart() {
 
   echo ""
   divider
-  echo -e "  ${DIM}Waiting for restart to complete...${NC}"
-  echo ""
-  kubectl rollout status "deployment/${DEPLOY_NAME}" -n "$NAMESPACE"
+  watch_rollout
   _KFORGE_STATUS="SUCCESS"
   success_banner "$DEPLOY_NAME restarted successfully"
 }
@@ -57,9 +55,7 @@ do_rollback() {
 
   echo ""
   divider
-  echo -e "  ${DIM}Waiting for rollback to stabilize...${NC}"
-  echo ""
-  kubectl rollout status "deployment/${DEPLOY_NAME}" -n "$NAMESPACE"
+  watch_rollout
   _KFORGE_STATUS="SUCCESS"
   success_banner "$DEPLOY_NAME rolled back successfully"
 }

@@ -3,7 +3,7 @@ name: backoffice-ui
 image: backoffice-ui
 port: 80
 namespace: test-mmp
-tag: 1.0.19
+tag: 1.0.34
 replicas: 1
 host_alias_ip: 10.245.0.169
 config_version: v1
@@ -23,12 +23,12 @@ countries:
     ambassador_host: mixxmmp-test.tigo.co.tz
     country: tz
     tls_secret: mixxmmp-tls-secret
-    previous_tag: 1.0.18
-    tag: 1.0.19
+    previous_tag: 1.0.33
+    tag: 1.0.34
   tg:
     ambassador_host: togo.mixx.tg
     country: tg
     tls_secret: tg-tls
-    previous_tag: 1.0.8
-    tag: 1.0.19
-previous_tag: 1.0.18
+    previous_tag: 1.0.33
+    tag: 1.0.34
+previous_tag: 1.0.34

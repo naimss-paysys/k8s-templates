@@ -3,10 +3,10 @@ name: dashboard-merchant-api
 image: dashboard-merchant-api
 port: 5502
 namespace: test-mmp
-tag: 1.0.61-TZ
-replicas: 2
+tag: 1.0.98-TZ
+replicas: 1
 host_alias_ip: 10.245.0.169
-config_version: v5
+config_version: v7
 rollout_timeout: 60
 resources:
   cpu: 200m/500m
@@ -29,11 +29,11 @@ countries:
     ambassador_host: mixxmmp-test.tigo.co.tz
     country: tz
     tls_secret: mixxmmp-tls-secret
-    configmap_full_name: dashboard-merchant-api-config-tz-v5-1.0.61-tz
-    previous_tag: 1.0.57-TZ
-    tag: 1.0.61-TZ
+    configmap_full_name: dashboard-merchant-api-config-tz-v7-1.0.98-tz
+    previous_tag: 1.0.96-TZ
+    tag: 1.0.98-TZ
   tg:
     ambassador_host: togo.mixx.tg
     country: tg
     tls_secret: tg-tls
-previous_tag: 1.0.57-TZ
+previous_tag: 1.0.96-TZ

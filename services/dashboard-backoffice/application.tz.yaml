@@ -26,6 +26,11 @@ allowedHeaders: 'Authorization,Content-Type,X-Requested-With,Accept,Origin,Acces
 allowedOrigins: '*'  # Change this to your frontend's URL(s), comma-separated if multiple
 logging:
   config: file:logback.xml
+  level:
+    org.hibernate.SQL: ERROR                   # disables raw SQL
+    org.hibernate.type.descriptor.sql.BasicBinder: ERROR   # disables parameter values
+    org.hibernate.type.descriptor.sql.BasicExtractor: ERROR # optional: disables extracted values
+    org.springframework.jdbc.core: ERROR       # disables Spring JDBC logs
 application:
   carriers:
     allowed: 030,031,032,033,034,035,036
@@ -48,9 +53,16 @@ jwt:
   # 43200000  = 12 hours
   # 604800000 = 7 days
 spring:
-    # Redis Configuration for JWT Token Caching
+  # Redis Configuration for JWT Token Caching
+  ldap:
+    #-------prod
+    urls: ${LDAP_URL:ldap://10.245.0.11:9999}
+    base: ${LDAP_BASE:OU=accounts,DC=tigo,DC=co,DC=tz}
+    username: ${LDAP_BIND_DN:CN=Postgres Bind,OU=Service Accounts,OU=accounts,DC=tigo,DC=co,DC=tz}
+    password: ${LDAP_BIND_PASSWORD:TanganyikabaraTanzania@1234567}
   redis:
     host: ${REDIS_HOST:10.0.150.126}
+#    host: ${REDIS_HOST:10.200.0.170}
     port: 6379
     password:  # Leave empty if no password
     database: 0
@@ -87,8 +99,10 @@ spring:
     type: com.zaxxer.hikari.HikariDataSource
     driver-class-name: org.postgresql.Driver
     url: ${DB_URL:jdbc:postgresql://10.0.150.11:5432/postgres}
+#    url: ${DB_URL:jdbc:postgresql://10.245.0.12:5432/axian-uat}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD:postgres}
+#    password: ${DB_PASSWORD:HOTZAjhJQ2toBIji}
   jackson:
     serialization:
       FAIL_ON_EMPTY_BEANS: false
@@ -209,6 +223,39 @@ security:
   login:
     max-failures: 5
     lock-duration-minutes: 1 # in minutes
+  ldap:
+    enabled: ${LDAP_ENABLED:false}
+
+#spring.ldap:
+#  #-------prod
+#  urls: ${LDAP_URL:ldap://10.222.15.44:389}
+#  base: ${LDAP_BASE:OU=accounts,DC=tigo,DC=co,DC=tz}
+#  username: ${LDAP_BIND_DN:CN=Postgres Bind,OU=Service Accounts,OU=accounts,DC=tigo,DC=co,DC=tz}
+#  password: ${LDAP_BIND_PASSWORD:TanganyikabaraTanzania@1234567}
+#  urls: ${LDAP_URL:ldap://localhost:389}
+#  base: ${LDAP_BASE:dc=tigo,dc=co,dc=tz}
+#  username: ${LDAP_BIND_DN:cn=admin,dc=tigo,dc=co,dc=tz}
+#  password: ${LDAP_BIND_PASSWORD:admin123}
+
+#-----------production
+ldap:
+  user-search-base: ${LDAP_USER_SEARCH_BASE:DC=tigo,DC=co,DC=tz}
+  user-search-filter: ${LDAP_USER_SEARCH_FILTER:(userPrincipalName={0})}
+  user-search-attribute: ${LDAP_USER_SEARCH_ATTRIBUTE:userPrincipalName}
+  group-search-base: ${LDAP_GROUP_SEARCH_BASE:}
+  group-role-attribute: ${LDAP_GROUP_ROLE_ATTRIBUTE:cn}
+  auto-provision:
+    default-role: ${LDAP_DEFAULT_ROLE:}  # Role name assigned to auto-provisioned LDAP users (admin assigns proper role later)
+
+#--------------local
+#ldap:
+#  user-search-base: ${LDAP_USER_SEARCH_BASE:ou=accounts}
+#  user-search-filter: ${LDAP_USER_SEARCH_FILTER:(uid={0})}
+#  user-search-attribute: ${LDAP_USER_SEARCH_ATTRIBUTE:uid}
+#  group-search-base: ${LDAP_GROUP_SEARCH_BASE:}
+#  group-role-attribute: ${LDAP_GROUP_ROLE_ATTRIBUTE:cn}
+#  auto-provision:
+#    default-role: ${LDAP_DEFAULT_ROLE:}
 aggregator : AXIAN
 
 rate-limit:
@@ -218,7 +265,8 @@ rate-limit:
 
 file:
   upload:
-    upload-dir: /data/documents/
+    upload-dir: "/data/documents/"
+    archive-dir: "/data/documents/"
 
 management:
   health:
@@ -255,26 +303,26 @@ bill:
     telepin:
       # Base endpoint
       endpoint: ${BILL_PAYMENT_URL:http://10.0.150.126:3011/TigoPaymentGateway_1_2}
-      
+
       # Authentication credentials
       consumer.id: mfs_app_new
       channel.user: 255630
       channel.pass: 3000
-      
+
       # Terminal configuration
       terminal.type: USD
-      
+
       # Default source wallet details
       source.msisdn: 255654949430
       source.pin: '****'
-      
+
       # Operation endpoints (p parameter)
       operations:
         bill-query: 2136          # Bill inquiry
         calculate-fee: 2137       # Government fee calculation
         bill-payment: 2022        # Bill payment execution
         government-payment: 1945  # Government payment execution
-      
+
       # Timeout and retry configuration
       timeout: 30000  # 30 seconds
       retry:
@@ -288,6 +336,7 @@ external-onboarding:
 service:
   url:
     queue: ${MPAY_URL:http://10.0.150.126:7033/acq/queueforwarding/}
+#    queue: ${MPAY_URL:https://mixxmmp-test.tigo.co.tz/web-service/acq/queueforwarding/}
   secret: paysys@123
   timeout: 30000  # 30 seconds timeout for MPAY calls
   retry:
@@ -382,6 +431,7 @@ external-api:
     password: "GoMixx@2026"
     agent-msisdn: "255716761995"
     consumer-id: "MixxMerchantPlatform"
+    app-id: "tz.go.bot.tips"
 
   requests:
     change-group-id:
@@ -441,3 +491,18 @@ dynamic:
 audit_masking:
   enabled: true
   fields: password,pin,token
+
+
+# ===================================================================
+# Test Users (seeded by bootstrap.ldif)
+# ===================================================================
+#  Username     | Password       | Email                  | Display Name
+#  -------------|----------------|------------------------|----------------
+#  adminuser    | Admin@12345    | adminuser@tigo.co.tz   | Admin User
+#  testuser1    | Test@12345     | testuser1@tigo.co.tz   | Test User One
+#  testuser2    | Test@12345     | testuser2@tigo.co.tz   | Test User Two
+#  manager1     | Manager@12345  | manager1@tigo.co.tz    | Manager One
+#
+# phpLDAPadmin UI: http://localhost:8080
+#   Login DN: cn=admin,dc=tigo,dc=co,dc=tz
+#   Password: admin123

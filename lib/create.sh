@@ -121,7 +121,8 @@ show_diagnostics() {
 # ── Rollout watch ─────────────────────────────────────────────────
 watch_rollout() {
   local TIMEOUT="${ROLLOUT_TIMEOUT:-120}"
-  local DEBUG_TIME=$(( TIMEOUT / 4 ))
+  local DEBUG_TIME=30
+  [ $DEBUG_TIME -ge $(( TIMEOUT / 2 )) ] && DEBUG_TIME=$(( TIMEOUT / 2 ))
 
   echo -e "  ${DIM}Waiting for rollout (max ${TIMEOUT}s)...${NC}"
   divider
@@ -138,7 +139,10 @@ watch_rollout() {
     ELAPSED=$(( NOW - WATCH_START ))
     if [ $ELAPSED -ge $DEBUG_TIME ] && [ "$DEBUG_DONE" = "false" ]; then
       DEBUG_DONE=true
-      echo -e "  ${YELLOW}!${NC} Rollout is taking longer than expected... checking pods."
+      echo -e "\n  ${YELLOW}!${NC} Rollout taking longer than ${DEBUG_TIME}s — current pod status:"
+      kubectl get pods -n "$NAMESPACE" -l "app=${DEPLOY_NAME}" 2>/dev/null \
+        | sed 's/^/     /' || true
+      echo ""
     fi
     if [ $ELAPSED -ge $TIMEOUT ]; then
       kill $ROLLOUT_PID 2>/dev/null || true
@@ -524,6 +528,7 @@ do_deploy() {
   show_diff
 
   # ── Phase 3: Apply ─────────────────────────────────────────────
+  local CM_CHANGED=false
   if [ "$TEMPLATE_LABEL" == "with-config" ]; then
     if [ -f "$CONFIGMAP_FILE" ]; then
       step $STEP_NUM $TOTAL "Applying configmap..."
@@ -535,6 +540,7 @@ do_deploy() {
       if [ $CM_EXIT -eq 0 ]; then
         step_done
         kubectl_result "$CM_OUTPUT"
+        echo "$CM_OUTPUT" | grep -q "configured" && CM_CHANGED=true
       else
         step_fail
         error_banner "ConfigMap apply failed" "Run --dry-run to inspect the file"
@@ -586,6 +592,10 @@ do_deploy() {
   if [ $DEPLOY_EXIT -eq 0 ]; then
     step_done
     kubectl_result "$DEPLOY_OUTPUT"
+    if [ "${CM_CHANGED:-false}" = "true" ] && echo "$DEPLOY_OUTPUT" | grep -q "unchanged"; then
+      echo -e "  ${CYAN}→${NC}  ${DIM}ConfigMap updated — restarting pods to apply new config${NC}"
+      kubectl rollout restart "deployment/${DEPLOY_NAME}" -n "$NAMESPACE" >/dev/null 2>&1 || true
+    fi
   else
     step_fail
     error_banner "Deployment apply failed" "Run --dry-run to inspect rendered YAML"

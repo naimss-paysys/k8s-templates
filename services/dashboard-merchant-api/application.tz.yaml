@@ -140,7 +140,7 @@ email:
   from_email: watcher@paysyslabs.com
   url: ${EMAIL_SERVICE_URL:http://10.0.150.21:7034/api/EmailService}
   change:
-    password_backoffice: http://10.0.150.16:3001
+    password_backoffice: http://mixxmmp-test.tigo.co.tz/merchant-portal
     password_portal: http://localhost:6097
 user:
   backoffice:
@@ -181,6 +181,8 @@ secret_key : "d4f12d6c8e9a9d0b"  #Should always be 16 alphanumeric characters
 #  | 24 hours   | 86400000                       |
 
 security:
+  ldap:
+    enabled: false
   login:
     max-failures: 5
     lock-duration-minutes: 1 # in minutes
@@ -215,6 +217,12 @@ backoffice:
 two-fa:
   public-key-path: D:\keys\key-public.pem
   time-left: 60 # in seconds e.g. 60 secs
+  enabled: false # false switches login MFA from TOTP/QR to OTP delivered over notification channels
+
+otp-ttl-sec:
+  login: 90 # in seconds e.g. 300 secs = 5 mins
+  reset-pin: 90 # in seconds e.g. 300 secs = 5 mins
+
 
 ## MPay QR Generation Configuration (SQRC / DQRC)
 #mpay:
@@ -446,6 +454,7 @@ external-api:
     username: "mixx.merchant"
     password: "GoMixx@2026"
     consumer-id: "MixxMerchantPlatform"
+    app-id: "tz.go.bot.tips"
 
   requests:
     togo-engrafi:

@@ -3,7 +3,7 @@ name: rest-handler
 image: rest-handler
 port: 8081
 namespace: test-mmp
-tag: 1.0.1
+tag: 1.0.3
 replicas: 1
 host_alias_ip: 10.245.0.169
 config_version: v4
@@ -29,7 +29,7 @@ countries:
     ambassador_host: mixxmmp-test.tigo.co.tz
     country: tz
     tls_secret: mixxmmp-tls-secret
-    configmap_full_name: rest-handler-config-tz-v4-1.0.1
+    configmap_full_name: rest-handler-config-tz-v4-1.0.3
   tg:
     ambassador_host: togo.mixx.tg
     country: tg

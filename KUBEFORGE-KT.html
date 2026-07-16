@@ -1,0 +1,922 @@
+<title>KubeForge — Knowledge Transfer</title>
+<style>
+/* ── CSS Custom Properties (Token Layer) ──────────────────────── */
+:root {
+  --bg:           #F2F5FA;
+  --surface:      #FFFFFF;
+  --surface-2:    #EBF0F8;
+  --border:       #D4DCE8;
+  --text:         #18243A;
+  --text-muted:   #55687E;
+  --text-dim:     #8EA1B8;
+  --accent:       #D97F2E;
+  --accent-soft:  #FDF0E4;
+  --accent-text:  #A85E12;
+  --blue:         #3B7EDE;
+  --blue-soft:    #EBF2FF;
+  --green:        #1AAF6A;
+  --green-soft:   #E4F7EE;
+  --red:          #D9504A;
+  --red-soft:     #FCEAEA;
+  --code-bg:      #18243A;
+  --code-text:    #C5DEFF;
+  --code-prompt:  #E8913A;
+  --code-comment: #587090;
+  --code-key:     #79C0FF;
+  --code-str:     #A5D6A7;
+  --code-val:     #F0A050;
+  --sidebar-bg:   #FFFFFF;
+  --sidebar-w:    260px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg:           #0C1520;
+    --surface:      #152030;
+    --surface-2:    #1C2C40;
+    --border:       #263848;
+    --text:         #D0DFEF;
+    --text-muted:   #7A98B5;
+    --text-dim:     #3E5870;
+    --accent:       #F0A050;
+    --accent-soft:  #301B08;
+    --accent-text:  #F0A050;
+    --blue:         #5BA0F5;
+    --blue-soft:    #0F2040;
+    --green:        #22D48A;
+    --green-soft:   #092A1C;
+    --red:          #F07070;
+    --red-soft:     #2A0D0D;
+    --code-bg:      #080E18;
+    --code-text:    #B8D8F8;
+    --code-prompt:  #F0A050;
+    --code-comment: #486070;
+    --code-key:     #79C0FF;
+    --code-str:     #8FC79F;
+    --code-val:     #E0904A;
+    --sidebar-bg:   #0F1C2C;
+  }
+}
+:root[data-theme="light"] {
+  --bg:#F2F5FA;--surface:#FFFFFF;--surface-2:#EBF0F8;--border:#D4DCE8;--text:#18243A;--text-muted:#55687E;--text-dim:#8EA1B8;--accent:#D97F2E;--accent-soft:#FDF0E4;--accent-text:#A85E12;--blue:#3B7EDE;--blue-soft:#EBF2FF;--green:#1AAF6A;--green-soft:#E4F7EE;--red:#D9504A;--red-soft:#FCEAEA;--code-bg:#18243A;--code-text:#C5DEFF;--code-prompt:#E8913A;--code-comment:#587090;--code-key:#79C0FF;--code-str:#A5D6A7;--code-val:#F0A050;--sidebar-bg:#FFFFFF;
+}
+:root[data-theme="dark"] {
+  --bg:#0C1520;--surface:#152030;--surface-2:#1C2C40;--border:#263848;--text:#D0DFEF;--text-muted:#7A98B5;--text-dim:#3E5870;--accent:#F0A050;--accent-soft:#301B08;--accent-text:#F0A050;--blue:#5BA0F5;--blue-soft:#0F2040;--green:#22D48A;--green-soft:#092A1C;--red:#F07070;--red-soft:#2A0D0D;--code-bg:#080E18;--code-text:#B8D8F8;--code-prompt:#F0A050;--code-comment:#486070;--code-key:#79C0FF;--code-str:#8FC79F;--code-val:#E0904A;--sidebar-bg:#0F1C2C;
+}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth;font-size:15px}
+body{font-family:-apple-system,'Segoe UI Variable Text','Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);line-height:1.65;display:flex;min-height:100vh}
+a{color:var(--blue);text-decoration:none}
+a:hover{text-decoration:underline}
+
+.sidebar{width:var(--sidebar-w);flex-shrink:0;background:var(--sidebar-bg);border-right:1px solid var(--border);position:fixed;top:0;left:0;height:100vh;overflow-y:auto;overflow-x:hidden;display:flex;flex-direction:column;z-index:100}
+.sidebar-header{padding:22px 20px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px}
+.brand-icon{width:32px;height:32px;flex-shrink:0;color:var(--accent)}
+.brand-name{font-size:.95rem;font-weight:700;letter-spacing:-.02em;color:var(--text);line-height:1.1}
+.brand-sub{font-size:.68rem;color:var(--text-muted);letter-spacing:.04em;text-transform:uppercase;margin-top:1px}
+.sidebar-nav{padding:16px 0 24px;flex:1}
+.nav-group{font-size:.65rem;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--text-dim);padding:12px 20px 5px}
+.nav-link{display:block;padding:6px 20px;font-size:.83rem;color:var(--text-muted);text-decoration:none;border-left:2px solid transparent;transition:color .15s,border-color .15s,background .15s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nav-link:hover{color:var(--text);background:var(--surface-2);text-decoration:none}
+.nav-link.active{color:var(--accent-text);border-left-color:var(--accent);background:var(--accent-soft);font-weight:500}
+
+.main{margin-left:var(--sidebar-w);flex:1;min-width:0;padding:0 52px 80px}
+.doc-header{padding:40px 0 32px;border-bottom:1px solid var(--border);margin-bottom:40px;max-width:840px}
+.doc-eyebrow{font-size:.7rem;font-weight:600;letter-spacing:.12em;text-transform:uppercase;color:var(--accent);margin-bottom:10px}
+.doc-title{font-size:2.1rem;font-weight:800;letter-spacing:-.04em;line-height:1.15;color:var(--text);text-wrap:balance;margin-bottom:12px}
+.doc-meta{display:flex;gap:20px;flex-wrap:wrap;font-size:.8rem;color:var(--text-muted)}
+
+section{margin-bottom:52px;max-width:840px;scroll-margin-top:24px}
+.section-label{font-size:.68rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--accent);margin-bottom:8px}
+h2{font-size:1.5rem;font-weight:700;letter-spacing:-.03em;color:var(--text);line-height:1.2;text-wrap:balance;padding-bottom:10px;border-bottom:1px solid var(--border);margin-bottom:20px}
+h3{font-size:1.05rem;font-weight:650;letter-spacing:-.015em;color:var(--text);margin:28px 0 10px}
+h4{font-size:.85rem;font-weight:700;letter-spacing:.02em;text-transform:uppercase;color:var(--text-muted);margin:20px 0 8px}
+p{margin-bottom:12px;color:var(--text)}
+p:last-child{margin-bottom:0}
+ul,ol{padding-left:20px;margin-bottom:12px}
+li{margin-bottom:4px}
+li::marker{color:var(--accent)}
+strong{font-weight:650;color:var(--text)}
+
+code{font-family:'Cascadia Code','Fira Code','SF Mono','Consolas','Monaco',monospace;font-size:.82em;background:var(--surface-2);color:var(--text);border:1px solid var(--border);border-radius:4px;padding:1px 5px}
+
+.code-block{position:relative;margin:14px 0}
+.code-block pre{background:var(--code-bg);color:var(--code-text);font-family:'Cascadia Code','Fira Code','SF Mono','Consolas','Monaco',monospace;font-size:.8rem;line-height:1.6;padding:18px 20px;border-radius:8px;overflow-x:auto;tab-size:2}
+.copy-btn{position:absolute;top:10px;right:10px;background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.5);font-size:.68rem;font-family:-apple-system,system-ui,sans-serif;font-weight:500;letter-spacing:.03em;padding:3px 9px;border-radius:4px;cursor:pointer;transition:background .15s,color .15s}
+.copy-btn:hover{background:rgba(255,255,255,.14);color:rgba(255,255,255,.9)}
+.copy-btn.copied{color:var(--green);border-color:var(--green)}
+
+/* syntax coloring */
+.p{color:var(--code-prompt)}
+.cm{color:var(--code-comment);font-style:italic}
+.kw{color:var(--code-key)}
+.st{color:var(--code-str)}
+.vl{color:var(--code-val)}
+.op{color:#D2B48C}
+.yk{color:var(--code-key)}
+.yv{color:var(--code-str)}
+.yc{color:var(--code-comment);font-style:italic}
+
+.table-wrap{overflow-x:auto;margin:14px 0;border-radius:8px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:.83rem}
+thead tr{background:var(--surface-2);border-bottom:1px solid var(--border)}
+th{padding:9px 14px;text-align:left;font-weight:650;font-size:.72rem;letter-spacing:.04em;text-transform:uppercase;color:var(--text-muted);white-space:nowrap}
+td{padding:9px 14px;border-bottom:1px solid var(--border);vertical-align:top;color:var(--text)}
+tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--surface-2)}
+td code{font-size:.77rem}
+
+.badge{display:inline-block;font-size:.65rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;padding:2px 6px;border-radius:4px;vertical-align:middle;margin:0 2px}
+.badge-req{background:var(--red-soft);color:var(--red)}
+.badge-opt{background:var(--blue-soft);color:var(--blue)}
+.badge-auto{background:var(--green-soft);color:var(--green)}
+
+.callout{display:flex;gap:12px;padding:14px 16px;border-radius:7px;margin:16px 0;font-size:.85rem}
+.callout-note{background:var(--blue-soft);border-left:3px solid var(--blue)}
+.callout-warn{background:var(--accent-soft);border-left:3px solid var(--accent)}
+.callout-danger{background:var(--red-soft);border-left:3px solid var(--red)}
+.callout-tip{background:var(--green-soft);border-left:3px solid var(--green)}
+.callout-icon{font-size:.9rem;line-height:1.6;flex-shrink:0;width:18px;text-align:center;font-weight:700}
+.callout-note .callout-icon{color:var(--blue)}
+.callout-warn .callout-icon{color:var(--accent)}
+.callout-danger .callout-icon{color:var(--red)}
+.callout-tip .callout-icon{color:var(--green)}
+
+.flow{display:flex;flex-direction:column;margin:16px 0}
+.flow-step{display:flex;gap:16px;padding:14px 0;border-bottom:1px solid var(--border)}
+.flow-step:last-child{border-bottom:none}
+.flow-num{width:28px;height:28px;border-radius:50%;background:var(--accent-soft);color:var(--accent-text);font-size:.75rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:2px;font-variant-numeric:tabular-nums}
+.flow-content h4{margin:0 0 4px;font-size:.88rem;font-weight:650;color:var(--text);letter-spacing:0;text-transform:none}
+.flow-content p{font-size:.83rem;color:var(--text-muted);margin:0}
+
+.file-tree{background:var(--code-bg);border-radius:8px;padding:18px 20px;font-family:'Cascadia Code','Fira Code','SF Mono','Consolas',monospace;font-size:.8rem;line-height:1.7;overflow-x:auto}
+.ft-dir{color:var(--code-key);font-weight:600}
+.ft-file{color:var(--code-text)}
+.ft-ann{color:var(--code-comment);font-style:italic}
+.ft-line{color:#2E4860}
+
+.kv-grid{display:grid;grid-template-columns:minmax(160px,auto) 1fr;gap:0;border:1px solid var(--border);border-radius:8px;overflow:hidden;font-size:.83rem;margin:14px 0}
+.kv-row{display:contents}
+.kv-row:not(:last-child) .kv-key,.kv-row:not(:last-child) .kv-val{border-bottom:1px solid var(--border)}
+.kv-key{background:var(--surface-2);padding:9px 14px;font-family:'Cascadia Code','Fira Code','SF Mono','Consolas',monospace;font-size:.77rem;color:var(--code-key)}
+.kv-val{background:var(--surface);padding:9px 14px;color:var(--text-muted)}
+.kv-val code{font-size:.77rem}
+
+.doc-footer{max-width:840px;margin-top:60px;padding-top:24px;border-top:1px solid var(--border);font-size:.78rem;color:var(--text-dim);display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px}
+
+.mobile-toggle{display:none;position:fixed;bottom:20px;right:20px;width:44px;height:44px;border-radius:50%;background:var(--accent);color:white;border:none;cursor:pointer;z-index:200;align-items:center;justify-content:center;box-shadow:0 2px 12px rgba(0,0,0,.3);font-size:1.1rem}
+
+@media(max-width:768px){
+  body{display:block}
+  .sidebar{transform:translateX(-100%);transition:transform .25s ease}
+  .sidebar.open{transform:translateX(0)}
+  .main{margin-left:0;padding:0 20px 80px}
+  .doc-header{padding:24px 0 20px}
+  .doc-title{font-size:1.6rem}
+  .mobile-toggle{display:flex}
+}
+@media print{
+  .sidebar{display:none}
+  .main{margin-left:0;padding:20px}
+  .copy-btn{display:none}
+}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *{transition-duration:0ms!important}
+}
+</style>
+
+<nav class="sidebar" id="sidebar">
+  <div class="sidebar-header">
+    <svg class="brand-icon" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <rect x="4" y="10" width="24" height="11" rx="2.5" fill="currentColor" opacity=".9"/>
+      <rect x="11" y="21" width="10" height="5" rx="1.5" fill="currentColor" opacity=".8"/>
+      <rect x="13.5" y="26" width="5" height="2.5" rx="1" fill="currentColor" opacity=".6"/>
+      <rect x="6" y="7" width="8" height="5" rx="1.5" fill="currentColor" opacity=".7"/>
+    </svg>
+    <div>
+      <div class="brand-name">KubeForge</div>
+      <div class="brand-sub">Knowledge Transfer</div>
+    </div>
+  </div>
+  <nav class="sidebar-nav" aria-label="Document sections">
+    <div class="nav-group">Getting Started</div>
+    <a class="nav-link active" href="#overview">Overview</a>
+    <a class="nav-link" href="#prerequisites">Prerequisites</a>
+    <a class="nav-link" href="#layout">Repository Layout</a>
+    <div class="nav-group">Reference</div>
+    <a class="nav-link" href="#commands">Commands</a>
+    <a class="nav-link" href="#service-yaml">service.yaml</a>
+    <a class="nav-link" href="#app-config">Application Config</a>
+    <a class="nav-link" href="#configmap-versioning">ConfigMap Versioning</a>
+    <div class="nav-group">Internals</div>
+    <a class="nav-link" href="#deploy-flow">Deploy Flow</a>
+    <a class="nav-link" href="#templates">Templates</a>
+    <a class="nav-link" href="#gitlab-ci">GitLab CI</a>
+    <div class="nav-group">Operations</div>
+    <a class="nav-link" href="#services">Deployed Services</a>
+    <a class="nav-link" href="#troubleshooting">Troubleshooting</a>
+  </nav>
+</nav>
+
+<main class="main">
+  <header class="doc-header">
+    <div class="doc-eyebrow">Knowledge Transfer Document</div>
+    <h1 class="doc-title">KubeForge — Multi-Country Kubernetes Deployment CLI</h1>
+    <div class="doc-meta">
+      <span>Author: Naimatullah Khan</span>
+      <span>Date: July 8, 2026</span>
+      <span>Project: MixxMMP Payment Platform</span>
+    </div>
+  </header>
+
+  <!-- OVERVIEW -->
+  <section id="overview">
+    <div class="section-label">Introduction</div>
+    <h2>Overview</h2>
+    <p><strong>KubeForge</strong> is an internal bash CLI that wraps <code>kubectl</code> to manage multi-country Kubernetes deployments for the MixxMMP payment platform. It lives at <code>/home/admin-dnf/k8s/</code> on the deploy server and is accessible system-wide via the <code>kubeforge</code> symlink pointing to <code>deploy.sh</code>.</p>
+    <p>It was built to solve a specific problem: MixxMMP services run in <strong>multiple countries</strong> (Tanzania = <code>tz</code>, Togo = <code>tg</code>) and each needs its own Spring Boot config injected as a Kubernetes ConfigMap, its own TLS secret, and its own Ambassador routing host. Doing this by hand with raw <code>kubectl apply</code> was error-prone and hard to repeat. KubeForge encodes the full deploy pipeline into a single command with guardrails.</p>
+    <h3>What one command does</h3>
+    <ul>
+      <li>Generates a versioned ConfigMap from <code>application.&lt;country&gt;.yaml</code></li>
+      <li>Runs <code>kubectl diff</code> and shows a color-coded preview before applying anything</li>
+      <li>Applies the ConfigMap, Ambassador Mapping, Deployment, Service, and HPA in order</li>
+      <li>Automatically restarts pods when only ConfigMap values changed (not the Deployment spec)</li>
+      <li>Watches the rollout with a 30-second diagnostic checkpoint and a configurable timeout</li>
+      <li>Rolls back to the last stable state on timeout or failure</li>
+      <li>Writes an audit log entry to <code>~/.kubeforge/history.log</code></li>
+    </ul>
+    <div class="callout callout-note">
+      <div class="callout-icon">i</div>
+      <div class="callout-body">KubeForge wraps kubectl — it does not bypass it. All applies go through <code>kubectl apply -f</code>. The tool requires a valid kubeconfig and cluster access. Run <code>kubeforge doctor</code> to verify prerequisites before a first deploy.</div>
+    </div>
+  </section>
+
+  <!-- PREREQUISITES -->
+  <section id="prerequisites">
+    <div class="section-label">Setup</div>
+    <h2>Prerequisites</h2>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Tool</th><th>Purpose</th><th>How to install</th></tr></thead>
+        <tbody>
+          <tr><td><code>kubectl</code></td><td>All Kubernetes operations</td><td>Already installed on the deploy server</td></tr>
+          <tr><td><code>yq</code> v4+</td><td>Parse and update <code>service.yaml</code></td><td><code>sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 &amp;&amp; sudo chmod +x /usr/local/bin/yq</code></td></tr>
+          <tr><td><code>envsubst</code></td><td>Render YAML templates</td><td>Part of <code>gettext</code>: <code>sudo dnf install gettext</code></td></tr>
+          <tr><td><code>docker</code></td><td>Pre-flight image existence check</td><td>Optional — deploy continues (with a warning) if unavailable</td></tr>
+          <tr><td><code>colordiff</code></td><td>Side-by-side ConfigMap diffs</td><td><code>sudo dnf install colordiff</code> — falls back to plain <code>diff</code></td></tr>
+          <tr><td>kubeconfig</td><td>Cluster access</td><td><code>~/.kube/config</code> or set <code>KUBECONFIG</code> env var</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <h3>Secrets required in the namespace</h3>
+    <p>These Kubernetes secrets must exist in <code>test-mmp</code> before any service can be deployed. Check with <code>kubeforge &lt;service&gt; --country tz --doctor</code>.</p>
+    <ul>
+      <li><code>my-registry-secret</code> — Docker registry pull credentials</li>
+      <li><code>dashboard-application-secrets</code> — Application-level env vars (DB credentials, API keys)</li>
+      <li><code>elk-credentials</code> — Filebeat to Elasticsearch credentials</li>
+      <li><code>mixxmmp-tls-secret</code> — TLS cert for the Tanzania Ambassador host</li>
+      <li><code>tg-tls</code> — TLS cert for the Togo Ambassador host</li>
+    </ul>
+    <h3>Shared ConfigMaps required in the namespace</h3>
+    <ul>
+      <li><code>shared-logback</code> — Logback XML mounted into all Spring Boot pods</li>
+      <li><code>shared-filebeat-config</code> — Filebeat YAML mounted into all pods</li>
+      <li><code>dynamic-lists-configmap</code> — Dynamic lists JSON for dashboard services</li>
+      <li><code>report-queries-configmap</code> — Report queries YAML for dashboard services</li>
+    </ul>
+  </section>
+
+  <!-- LAYOUT -->
+  <section id="layout">
+    <div class="section-label">Structure</div>
+    <h2>Repository Layout</h2>
+    <div class="file-tree">
+<span class="ft-dir">k8s/</span>
+<span class="ft-line">├── </span><span class="ft-file">deploy.sh</span>                  <span class="ft-ann"># entry point — "kubeforge" symlink points here</span>
+<span class="ft-line">├── </span><span class="ft-file">generate-configmap.sh</span>      <span class="ft-ann"># generates versioned ConfigMap from application.&lt;country&gt;.yaml</span>
+<span class="ft-line">├── </span><span class="ft-file">gitlab-ci-deploy.yml</span>       <span class="ft-ann"># drop-in CI/CD deploy stage definition</span>
+<span class="ft-line">│</span>
+<span class="ft-line">├── </span><span class="ft-dir">lib/</span>                       <span class="ft-ann"># sourced by deploy.sh — do not call directly</span>
+<span class="ft-line">│   ├── </span><span class="ft-file">ui.sh</span>                  <span class="ft-ann"># terminal colors, banners, step/progress output</span>
+<span class="ft-line">│   ├── </span><span class="ft-file">config.sh</span>              <span class="ft-ann"># loads service.yaml (or legacy values.env)</span>
+<span class="ft-line">│   ├── </span><span class="ft-file">validate.sh</span>            <span class="ft-ann"># pre-flight: image exists check, YAML validation</span>
+<span class="ft-line">│   ├── </span><span class="ft-file">create.sh</span>              <span class="ft-ann"># do_deploy(), watch_rollout(), show_diagnostics()</span>
+<span class="ft-line">│   ├── </span><span class="ft-file">restart.sh</span>             <span class="ft-ann"># do_restart(), do_rollback()</span>
+<span class="ft-line">│   ├── </span><span class="ft-file">audit.sh</span>               <span class="ft-ann"># log_audit(), do_history() → ~/.kubeforge/history.log</span>
+<span class="ft-line">│   └── </span><span class="ft-file">doctor.sh</span>              <span class="ft-ann"># do_doctor() — cluster health checks</span>
+<span class="ft-line">│</span>
+<span class="ft-line">├── </span><span class="ft-dir">templates/</span>
+<span class="ft-line">│   ├── </span><span class="ft-file">template-with-config.yaml</span>  <span class="ft-ann"># Spring Boot: ConfigMap + Filebeat + initContainer</span>
+<span class="ft-line">│   ├── </span><span class="ft-file">template-no-config.yaml</span>    <span class="ft-ann"># Frontend (nginx): Filebeat only, no ConfigMap</span>
+<span class="ft-line">│   ├── </span><span class="ft-file">mapping.yaml.template</span>      <span class="ft-ann"># Ambassador Mapping resource</span>
+<span class="ft-line">│   └── </span><span class="ft-file">hpa.yaml.template</span>          <span class="ft-ann"># HorizontalPodAutoscaler</span>
+<span class="ft-line">│</span>
+<span class="ft-line">├── </span><span class="ft-dir">services/</span>                   <span class="ft-ann"># one subdirectory per service</span>
+<span class="ft-line">│   └── </span><span class="ft-dir">dashboard-backoffice/</span>
+<span class="ft-line">│       ├── </span><span class="ft-file">service.yaml</span>          <span class="ft-ann"># image, port, resources, country config</span>
+<span class="ft-line">│       ├── </span><span class="ft-file">application.tz.yaml</span>   <span class="ft-ann"># Spring Boot config for Tanzania</span>
+<span class="ft-line">│       ├── </span><span class="ft-file">application.tg.yaml</span>   <span class="ft-ann"># Spring Boot config for Togo</span>
+<span class="ft-line">│       └── </span><span class="ft-dir">generated/</span>            <span class="ft-ann"># gitignored — auto-created on each deploy</span>
+<span class="ft-line">│           ├── </span><span class="ft-file">configmap.tz.yaml</span>
+<span class="ft-line">│           └── </span><span class="ft-file">configmap.tg.yaml</span>
+<span class="ft-line">│</span>
+<span class="ft-line">└── </span><span class="ft-file">.kubeforge</span>                  <span class="ft-ann"># stores DEFAULT_COUNTRY — managed by "kubeforge default"</span>
+    </div>
+    <div class="callout callout-warn">
+      <div class="callout-icon">!</div>
+      <div class="callout-body">The <code>generated/</code> subfolder inside each service is gitignored. ConfigMap YAML files are regenerated on every deploy and must never be committed. The <code>application.&lt;country&gt;.yaml</code> files are committed and are the source of truth for each country's Spring Boot config.</div>
+    </div>
+  </section>
+
+  <!-- COMMANDS -->
+  <section id="commands">
+    <div class="section-label">Reference</div>
+    <h2>Commands</h2>
+    <p>All commands follow <code>kubeforge &lt;service&gt; [--country &lt;code&gt;] [action]</code>. If <code>--country</code> is omitted, KubeForge uses the default country set with <code>kubeforge default &lt;code&gt;</code>.</p>
+
+    <h3>Service-level actions</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td><code>kubeforge &lt;svc&gt;</code></td><td>Full deploy using the default country. Generates ConfigMap, shows diff, asks for confirmation, applies everything, watches rollout.</td></tr>
+          <tr><td><code>kubeforge &lt;svc&gt; --country tg</code></td><td>Full deploy targeting Togo specifically.</td></tr>
+          <tr><td><code>kubeforge &lt;svc&gt; --country tz --dry-run</code></td><td>Renders all YAML and prints it without applying. Safe to run at any time.</td></tr>
+          <tr><td><code>kubeforge &lt;svc&gt; --country tz --restart</code></td><td>Runs <code>kubectl rollout restart</code>. Triggers new pods with the same image and current config. Includes rollout watch with timeout and diagnostics.</td></tr>
+          <tr><td><code>kubeforge &lt;svc&gt; --country tz --rollback</code></td><td>Runs <code>kubectl rollout undo</code> to revert to the previous ReplicaSet.</td></tr>
+          <tr><td><code>kubeforge &lt;svc&gt; --country tz --status</code></td><td>Shows current pods, deployment status, and HPA for the service.</td></tr>
+          <tr><td><code>kubeforge &lt;svc&gt; --country tg --init</code></td><td>Scaffolds a new <code>service.yaml</code> and <code>application.tg.yaml</code> if they don't exist.</td></tr>
+          <tr><td><code>kubeforge &lt;svc&gt; --country tz --doctor</code></td><td>Health check: verifies secrets, shared ConfigMaps, PVC, pod status, image pull errors.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Global commands</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Command</th><th>What it does</th></tr></thead>
+        <tbody>
+          <tr><td><code>kubeforge list</code></td><td>Lists all services with namespace, current tag, countries, and enabled features (ConfigMap / HPA / Mapping).</td></tr>
+          <tr><td><code>kubeforge history [N]</code></td><td>Shows the last N records from <code>~/.kubeforge/history.log</code>. Default 50.</td></tr>
+          <tr><td><code>kubeforge default tz</code></td><td>Sets <code>tz</code> as the default country, saved to <code>k8s/.kubeforge</code>.</td></tr>
+          <tr><td><code>kubeforge default</code></td><td>Shows the current default country.</td></tr>
+          <tr><td><code>kubeforge doctor</code></td><td>Cluster-level check: kubeconfig valid, API server reachable, namespace accessible.</td></tr>
+          <tr><td><code>kubeforge help</code></td><td>Full usage reference printed to the terminal.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Examples</h3>
+    <div class="code-block">
+      <pre><span class="cm"># One-time setup: set Tanzania as default country</span>
+<span class="p">$</span> kubeforge default tz
+
+<span class="cm"># Deploy dashboard-backoffice for Tanzania (uses default country)</span>
+<span class="p">$</span> kubeforge dashboard-backoffice
+
+<span class="cm"># Deploy the same service for Togo</span>
+<span class="p">$</span> kubeforge dashboard-backoffice --country tg
+
+<span class="cm"># Preview what will change — nothing is applied</span>
+<span class="p">$</span> kubeforge dashboard-backoffice --country tz --dry-run
+
+<span class="cm"># Restart pods to pick up a secret change</span>
+<span class="p">$</span> kubeforge dashboard-backoffice --country tz --restart
+
+<span class="cm"># Something went wrong — roll back</span>
+<span class="p">$</span> kubeforge dashboard-backoffice --country tz --rollback
+
+<span class="cm"># Verify cluster prerequisites before first deploy</span>
+<span class="p">$</span> kubeforge doctor
+
+<span class="cm"># See all services at a glance</span>
+<span class="p">$</span> kubeforge list
+
+<span class="cm"># Review last 20 deploy events</span>
+<span class="p">$</span> kubeforge history 20</pre>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+    <div class="callout callout-note">
+      <div class="callout-icon">i</div>
+      <div class="callout-body"><strong>Concurrent deploy protection:</strong> KubeForge acquires a file lock at <code>/tmp/kubeforge-&lt;service&gt;-&lt;country&gt;.lock</code>. A second deploy of the same service/country while one is in progress exits immediately with an error.</div>
+    </div>
+  </section>
+
+  <!-- SERVICE YAML -->
+  <section id="service-yaml">
+    <div class="section-label">Reference</div>
+    <h2>service.yaml</h2>
+    <p>Every service has one <code>service.yaml</code> in its <code>services/&lt;name&gt;/</code> directory. This is the primary file you edit for configuration changes. It defines the image, port, resources, routing, scaling, and per-country overrides.</p>
+
+    <h3>Annotated example</h3>
+    <div class="code-block">
+      <pre><span class="cm"># services/dashboard-backoffice/service.yaml</span>
+
+<span class="yk">name</span><span class="op">:</span> <span class="yv">dashboard-backoffice</span>   <span class="yc"># must match the services/ directory name</span>
+<span class="yk">image</span><span class="op">:</span> <span class="yv">dashboard-backoffice</span>  <span class="yc"># image name in the registry (tag excluded)</span>
+<span class="yk">port</span><span class="op">:</span> <span class="vl">5501</span>                    <span class="yc"># container port</span>
+<span class="yk">namespace</span><span class="op">:</span> <span class="yv">test-mmp</span>
+<span class="yk">tag</span><span class="op">:</span> <span class="yv">1.0.92-TZ</span>               <span class="yc"># base tag — CI overwrites this before deploy</span>
+<span class="yk">replicas</span><span class="op">:</span> <span class="vl">1</span>
+<span class="yk">host_alias_ip</span><span class="op">:</span> <span class="yv">10.245.0.169</span> <span class="yc"># MetalLB VIP — maps Ambassador host inside pods</span>
+<span class="yk">config_version</span><span class="op">:</span> <span class="yv">v12</span>         <span class="yc"># auto-incremented when ConfigMap YAML keys change</span>
+<span class="yk">rollout_timeout</span><span class="op">:</span> <span class="vl">60</span>         <span class="yc"># seconds before rollout is declared stuck</span>
+
+<span class="yk">resources</span><span class="op">:</span>
+  <span class="yk">cpu</span><span class="op">:</span> <span class="yv">200m/800m</span>             <span class="yc"># request/limit — parsed as "req/limit" by a slash</span>
+  <span class="yk">memory</span><span class="op">:</span> <span class="yv">1536Mi/2560Mi</span>
+
+<span class="yk">routing</span><span class="op">:</span>                     <span class="yc"># both fields needed to create an Ambassador Mapping</span>
+  <span class="yk">prefix</span><span class="op">:</span> <span class="yv">/dashboard-backoffice/</span>
+  <span class="yk">rewrite</span><span class="op">:</span> <span class="yv">/</span>
+
+<span class="cm"># scaling:                    # all four needed to create an HPA</span>
+<span class="cm">#   min: 1</span>
+<span class="cm">#   max: 4</span>
+<span class="cm">#   cpu_threshold: 70</span>
+<span class="cm">#   mem_threshold: 75</span>
+
+<span class="yk">secrets</span><span class="op">:</span>                     <span class="yc"># checked by --doctor</span>
+  <span class="op">-</span> <span class="yv">my-registry-secret</span>
+  <span class="op">-</span> <span class="yv">dashboard-application-secrets</span>
+  <span class="op">-</span> <span class="yv">elk-credentials</span>
+  <span class="op">-</span> <span class="yv">mixxmmp-tls-secret</span>
+
+<span class="yk">countries</span><span class="op">:</span>
+  <span class="yk">tz</span><span class="op">:</span>
+    <span class="yk">ambassador_host</span><span class="op">:</span> <span class="yv">mixxmmp-test.tigo.co.tz</span>
+    <span class="yk">country</span><span class="op">:</span> <span class="yv">tz</span>
+    <span class="yk">tls_secret</span><span class="op">:</span> <span class="yv">mixxmmp-tls-secret</span>
+    <span class="yk">tag</span><span class="op">:</span> <span class="yv">1.0.92-TZ</span>
+    <span class="yk">previous_tag</span><span class="op">:</span> <span class="yv">1.0.91-TZ</span>              <span class="yc"># written by CI before deploy</span>
+    <span class="yk">configmap_full_name</span><span class="op">:</span> <span class="yv">dashboard-backoffice-config-tz-v12-1.0.92-tz</span>
+    <span class="cm">                     # ↑ auto-written by generate-configmap.sh — never edit manually</span>
+  <span class="yk">tg</span><span class="op">:</span>
+    <span class="yk">ambassador_host</span><span class="op">:</span> <span class="yv">togo.mixx.tg</span>
+    <span class="yk">country</span><span class="op">:</span> <span class="yv">tg</span>
+    <span class="yk">tls_secret</span><span class="op">:</span> <span class="yv">tg-tls</span></pre>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+
+    <h3>Field reference</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Field</th><th></th><th>Description</th></tr></thead>
+        <tbody>
+          <tr><td><code>name</code></td><td><span class="badge badge-req">required</span></td><td>Service name. Must match the <code>services/</code> directory. Becomes the Deployment/Service/pod label prefix.</td></tr>
+          <tr><td><code>image</code></td><td><span class="badge badge-req">required</span></td><td>Image name in the registry. Full path is <code>MixxMMP-registry-test.tigo.co.tz/&lt;image&gt;:&lt;tag&gt;</code>.</td></tr>
+          <tr><td><code>port</code></td><td><span class="badge badge-req">required</span></td><td>Container port. Used in both the Deployment <code>containerPort</code> and the Kubernetes Service.</td></tr>
+          <tr><td><code>countries.&lt;code&gt;.namespace</code></td><td><span class="badge badge-req">required</span></td><td>Kubernetes namespace. All services currently use <code>test-mmp</code>.</td></tr>
+          <tr><td><code>countries.&lt;code&gt;.tag</code></td><td><span class="badge badge-req">required</span></td><td>Image tag for this country. Updated by CI before deploy. Never use <code>latest</code>.</td></tr>
+          <tr><td><code>countries.&lt;code&gt;.ambassador_host</code></td><td><span class="badge badge-req">required</span></td><td>The Ambassador Host selector — must match an existing Ambassador Host resource in the cluster.</td></tr>
+          <tr><td><code>countries.&lt;code&gt;.tls_secret</code></td><td><span class="badge badge-req">required</span></td><td>Kubernetes secret with the TLS cert. Mounted into the initContainer for Java trust store import.</td></tr>
+          <tr><td><code>replicas</code></td><td><span class="badge badge-opt">optional</span></td><td>Pod replicas. Default: 1. Overridable per country with <code>countries.&lt;code&gt;.replicas</code>.</td></tr>
+          <tr><td><code>resources.cpu</code></td><td><span class="badge badge-opt">optional</span></td><td>CPU as <code>request/limit</code> — e.g. <code>200m/800m</code>. Overridable per country.</td></tr>
+          <tr><td><code>resources.memory</code></td><td><span class="badge badge-opt">optional</span></td><td>Memory as <code>request/limit</code> — e.g. <code>512Mi/1536Mi</code>. Overridable per country.</td></tr>
+          <tr><td><code>host_alias_ip</code></td><td><span class="badge badge-opt">optional</span></td><td>When set, adds a <code>hostAliases</code> entry to the pod spec mapping the MetalLB VIP to the Ambassador host. Needed so pods can reach their own public URL internally. Stripped from the spec when unset.</td></tr>
+          <tr><td><code>rollout_timeout</code></td><td><span class="badge badge-opt">optional</span></td><td>Seconds before rollout is declared stuck. Default: 120. At 30 seconds, live pod status is printed automatically.</td></tr>
+          <tr><td><code>config_version</code></td><td><span class="badge badge-opt">optional</span></td><td>Tracks the ConfigMap schema generation. Auto-incremented when YAML <em>keys</em> change. Default: <code>v1</code>. Do not edit manually.</td></tr>
+          <tr><td><code>routing.prefix</code> + <code>routing.rewrite</code></td><td><span class="badge badge-opt">optional</span></td><td>Both must be set to create an Ambassador Mapping. <code>rewrite</code> is almost always <code>/</code>.</td></tr>
+          <tr><td><code>scaling.*</code></td><td><span class="badge badge-opt">optional</span></td><td>All four fields (<code>min</code>, <code>max</code>, <code>cpu_threshold</code>, <code>mem_threshold</code>) must be set to create an HPA.</td></tr>
+          <tr><td><code>countries.&lt;code&gt;.configmap_full_name</code></td><td><span class="badge badge-auto">auto</span></td><td>Written by <code>generate-configmap.sh</code> after each run. Never edit manually — the Deployment template reads this to mount the correct ConfigMap.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- APPLICATION CONFIG -->
+  <section id="app-config">
+    <div class="section-label">Reference</div>
+    <h2>Application Config (ConfigMap Source)</h2>
+    <p>Spring Boot services read their runtime config from a Kubernetes ConfigMap mounted at <code>/app/config/application.yaml</code> inside the pod. The source file in this repo is <code>services/&lt;service&gt;/application.&lt;country&gt;.yaml</code>. KubeForge generates the ConfigMap from this file on every deploy.</p>
+
+    <h3>The pipeline</h3>
+    <p>Running <code>kubeforge dashboard-backoffice --country tz</code>:</p>
+    <ol>
+      <li>Reads <code>services/dashboard-backoffice/application.tz.yaml</code></li>
+      <li>Wraps it in a ConfigMap YAML named <code>dashboard-backoffice-config-tz-v12-1.0.92-tz</code></li>
+      <li>Writes it to <code>services/dashboard-backoffice/generated/configmap.tz.yaml</code></li>
+      <li>Applies it to the cluster, then the Deployment mounts it at <code>/app/config/application.yaml</code></li>
+    </ol>
+
+    <h3>Country isolation rule</h3>
+    <div class="callout callout-warn">
+      <div class="callout-icon">!</div>
+      <div class="callout-body"><strong>Never share a single application.yaml between countries.</strong> Always create separate <code>application.tz.yaml</code> and <code>application.tg.yaml</code>. Each gets its own versioned ConfigMap name — they deploy and roll back independently without affecting each other.</div>
+    </div>
+
+    <h3>Example application.tz.yaml</h3>
+    <div class="code-block">
+      <pre><span class="cm"># services/dashboard-backoffice/application.tz.yaml</span>
+<span class="cm"># Standard Spring Boot YAML — injected as-is into the ConfigMap.</span>
+
+<span class="yk">server</span><span class="op">:</span>
+  <span class="yk">port</span><span class="op">:</span> <span class="vl">5501</span>
+  <span class="yk">servlet</span><span class="op">:</span>
+    <span class="yk">context-path</span><span class="op">:</span> <span class="yv">/dashboard-backoffice</span>
+
+<span class="yk">spring</span><span class="op">:</span>
+  <span class="yk">datasource</span><span class="op">:</span>
+    <span class="yk">url</span><span class="op">:</span> <span class="yv">jdbc:postgresql://db-host:5432/backoffice_tz</span>
+  <span class="yk">application</span><span class="op">:</span>
+    <span class="yk">name</span><span class="op">:</span> <span class="yv">dashboard-backoffice</span>
+
+<span class="yk">bo_config</span><span class="op">:</span>
+  <span class="yk">base_url</span><span class="op">:</span> <span class="yv">https://mixxmmp-test.tigo.co.tz</span>
+  <span class="yk">country_code</span><span class="op">:</span> <span class="yv">TZ</span></pre>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+
+    <h3>Frontend services — no ConfigMap</h3>
+    <p>Frontend services (<code>backoffice-ui</code>, <code>merchant-portal</code>) have no <code>application.&lt;country&gt;.yaml</code>. KubeForge detects this and automatically uses <code>template-no-config.yaml</code> — no ConfigMap step at all. Runtime config for frontends is baked into the Docker image at build time via <code>config.js</code>.</p>
+  </section>
+
+  <!-- CONFIGMAP VERSIONING -->
+  <section id="configmap-versioning">
+    <div class="section-label">Internals</div>
+    <h2>ConfigMap Versioning</h2>
+    <p>The ConfigMap name encodes service name, country, config version, and image tag:</p>
+    <div class="code-block">
+      <pre><span class="vl">dashboard-backoffice-config-tz-v12-1.0.92-tz</span>
+<span class="cm">#                             ─┬─ ──┬── ─────┬───── ─┬─</span>
+<span class="cm">#                              │    │         │       └ country suffix</span>
+<span class="cm">#                              │    │         └ image tag</span>
+<span class="cm">#                              │    └ config_version (bumps on key changes)</span>
+<span class="cm">#                              └ "config" literal</span></pre>
+    </div>
+
+    <h3>When does config_version bump?</h3>
+    <p>KubeForge compares the YAML <em>keys</em> between old and new <code>application.&lt;country&gt;.yaml</code> — not the values.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Change type</th><th>config_version</th><th>Effect on pods</th></tr></thead>
+        <tbody>
+          <tr><td>Value change only (e.g. different DB URL)</td><td>No bump — stays at v12</td><td>ConfigMap updated in place. KubeForge triggers <code>kubectl rollout restart</code> automatically so pods pick up the new values.</td></tr>
+          <tr><td>New YAML key added</td><td>Bumps v12 → v13</td><td>New ConfigMap name, Deployment spec references new name → pods restart via normal rollout.</td></tr>
+          <tr><td>YAML key removed or renamed</td><td>Bumps</td><td>Same as above.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="callout callout-tip">
+      <div class="callout-icon">✓</div>
+      <div class="callout-body"><strong>Why versioned names?</strong> Kubernetes won't restart pods just because a ConfigMap was updated in place — the Deployment spec must change to trigger a rollout. The versioned name in the Deployment's volume definition is how structural changes always force a rollout. For value-only changes, KubeForge detects the "unchanged" Deployment and runs <code>kubectl rollout restart</code> automatically.</div>
+    </div>
+
+    <h3>Old ConfigMap cleanup</h3>
+    <p>After a successful deploy, KubeForge deletes any ConfigMaps in the namespace matching <code>&lt;service&gt;-config-&lt;country&gt;-*</code> that are not the current <code>configmap_full_name</code>. This prevents accumulation of stale ConfigMaps over time.</p>
+  </section>
+
+  <!-- DEPLOY FLOW -->
+  <section id="deploy-flow">
+    <div class="section-label">Internals</div>
+    <h2>Deploy Flow</h2>
+    <p>Every step that runs when you execute <code>kubeforge &lt;service&gt; --country tz</code>:</p>
+    <div class="flow">
+      <div class="flow-step">
+        <div class="flow-num">1</div>
+        <div class="flow-content">
+          <h4>Arg parsing and config load</h4>
+          <p><code>deploy.sh</code> parses the service name, country, and action flag. <code>lib/config.sh</code> loads <code>service.yaml</code> with <code>yq</code> and exports all template variables: <code>SERVICE_NAME</code>, <code>TAG</code>, <code>NAMESPACE</code>, <code>CONFIGMAP_FULL_NAME</code>, <code>AMBASSADOR_HOST</code>, resources, etc.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">2</div>
+        <div class="flow-content">
+          <h4>Concurrent lock</h4>
+          <p>Acquires <code>/tmp/kubeforge-&lt;service&gt;-&lt;country&gt;.lock</code>. A second deploy of the same service/country will exit immediately — no partial state possible.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">3</div>
+        <div class="flow-content">
+          <h4>Pre-flight validation</h4>
+          <p>Checks that the image tag exists in the registry (<code>docker manifest inspect</code> or registry API). Validates the generated ConfigMap, rendered Mapping, and rendered Deployment YAML using <code>kubectl apply --dry-run=client</code>. Fails fast before touching the cluster.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">4</div>
+        <div class="flow-content">
+          <h4>ConfigMap generation</h4>
+          <p>Calls <code>generate-configmap.sh</code>. Reads <code>application.&lt;country&gt;.yaml</code>, compares keys with the previous generated configmap. Bumps <code>config_version</code> in <code>service.yaml</code> if keys changed. Writes the new ConfigMap to <code>generated/configmap.&lt;country&gt;.yaml</code>. In interactive mode: shows a side-by-side diff and prompts for confirmation. In CI mode (<code>CI=true</code>): auto-confirms.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">5</div>
+        <div class="flow-content">
+          <h4>Diff and confirm</h4>
+          <p>Runs <code>kubectl diff</code> across the combined YAML (ConfigMap + Mapping + Deployment + HPA). Shows a color-coded diff: green = added, red = removed. Prompts <strong>Apply these changes? [yes/no]</strong>. CI mode skips this prompt.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">6</div>
+        <div class="flow-content">
+          <h4>Apply: ConfigMap</h4>
+          <p><code>kubectl apply -f generated/configmap.&lt;country&gt;.yaml</code>. Internally tracks whether kubectl reported <code>configured</code> (changed) or <code>unchanged</code>.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">7</div>
+        <div class="flow-content">
+          <h4>Apply: Ambassador Mapping (conditional)</h4>
+          <p>Renders <code>templates/mapping.yaml.template</code> with <code>envsubst</code> and applies it. Skipped if <code>routing.prefix</code> or <code>routing.rewrite</code> are absent in <code>service.yaml</code>.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">8</div>
+        <div class="flow-content">
+          <h4>Apply: Deployment + Service</h4>
+          <p>Renders the appropriate template and applies it. <strong>Key behavior:</strong> if the ConfigMap was updated (step 6 returned <code>configured</code>) but the Deployment spec is <code>unchanged</code> (same image, same ConfigMap name), KubeForge automatically runs <code>kubectl rollout restart</code> to push the new config values to running pods.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">9</div>
+        <div class="flow-content">
+          <h4>Apply: HPA (conditional)</h4>
+          <p>Renders and applies <code>templates/hpa.yaml.template</code>. Skipped if all four scaling fields are not set in <code>service.yaml</code>.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">10</div>
+        <div class="flow-content">
+          <h4>Rollout watch</h4>
+          <p>Runs <code>kubectl rollout status</code> in the background, polling every 2 seconds. At <strong>30 seconds</strong>: prints a live <code>kubectl get pods</code> table if the rollout is still running. At <code>rollout_timeout</code> seconds: shows full diagnostics (recent events + container logs), runs <code>kubectl rollout undo</code>, and exits with failure.</p>
+        </div>
+      </div>
+      <div class="flow-step">
+        <div class="flow-num">11</div>
+        <div class="flow-content">
+          <h4>Post-deploy cleanup</h4>
+          <p>Prints the live pods table. Deletes stale ConfigMaps from previous versions. Writes a timestamped audit record to <code>~/.kubeforge/history.log</code> with service name, country, tag, action, status, and duration.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TEMPLATES -->
+  <section id="templates">
+    <div class="section-label">Internals</div>
+    <h2>Kubernetes Templates</h2>
+    <p>KubeForge selects the template automatically. If <code>application.&lt;country&gt;.yaml</code> exists for the service, it uses <code>template-with-config.yaml</code>; otherwise <code>template-no-config.yaml</code>. All variables are substituted by <code>envsubst</code> from the shell environment.</p>
+
+    <h3>template-with-config.yaml — Spring Boot services</h3>
+    <p>Used for: <code>dashboard-backoffice</code>, <code>dashboard-acquiring-api</code>, <code>dashboard-merchant-api</code>, <code>dashboard-job-processor</code>, <code>rest-handler</code>, <code>queue-handler</code>, <code>web</code>.</p>
+    <p>The pod spec contains three containers/init-containers:</p>
+    <ul>
+      <li><strong>initContainer <code>trust-cert</code></strong> — copies the JVM <code>cacerts</code> file and imports the service's TLS certificate using <code>keytool</code>. Required so Java can make TLS calls to the Ambassador host. Runs to completion before the main container starts.</li>
+      <li><strong>Main container (<code>$SERVICE_NAME</code>)</strong> — Spring Boot application. Mounts the generated ConfigMap at <code>/app/config/application.yaml</code>. Sets <code>SPRING_CONFIG_LOCATION</code>, <code>LOGGING_CONFIG</code>, and Java trust store env vars. Reads app secrets from <code>dashboard-application-secrets</code>.</li>
+      <li><strong>Filebeat sidecar</strong> — ships application logs from the shared <code>/logs</code> emptyDir volume to Elasticsearch. Reads credentials from <code>elk-credentials</code> secret.</li>
+    </ul>
+
+    <h3>template-no-config.yaml — Frontend services</h3>
+    <p>Used for: <code>backoffice-ui</code>, <code>merchant-portal</code>.</p>
+    <ul>
+      <li><strong>Main container (<code>$SERVICE_NAME</code>)</strong> — nginx serving static frontend assets. No ConfigMap mount, no initContainer, no secrets injection.</li>
+      <li><strong>Filebeat sidecar</strong> — same as above, ships nginx access logs.</li>
+    </ul>
+
+    <div class="callout callout-note">
+      <div class="callout-icon">i</div>
+      <div class="callout-body">All Kubernetes resource names use the pattern <code>$SERVICE_NAME-$COUNTRY</code> (e.g. <code>dashboard-backoffice-tz</code>). This allows multiple countries to run independently in the same namespace without name collisions.</div>
+    </div>
+
+    <h3>Ambassador Mapping template</h3>
+    <div class="code-block">
+      <pre><span class="yk">apiVersion</span><span class="op">:</span> <span class="yv">getambassador.io/v3alpha1</span>
+<span class="yk">kind</span><span class="op">:</span> <span class="yv">Mapping</span>
+<span class="yk">metadata</span><span class="op">:</span>
+  <span class="yk">name</span><span class="op">:</span> <span class="yv">$SERVICE_NAME-$COUNTRY-mapping</span>
+  <span class="yk">namespace</span><span class="op">:</span> <span class="yv">$NAMESPACE</span>
+<span class="yk">spec</span><span class="op">:</span>
+  <span class="yk">host</span><span class="op">:</span> <span class="yv">"$AMBASSADOR_HOST"</span>    <span class="yc"># matches an Ambassador Host resource (e.g. mixxmmp-test.tigo.co.tz)</span>
+  <span class="yk">prefix</span><span class="op">:</span> <span class="yv">$PREFIX</span>             <span class="yc"># public URL path</span>
+  <span class="yk">rewrite</span><span class="op">:</span> <span class="yv">$REWRITE</span>           <span class="yc"># path the app receives — almost always /</span>
+  <span class="yk">service</span><span class="op">:</span> <span class="yv">$SERVICE_NAME-$COUNTRY-service.$NAMESPACE.svc.cluster.local:$PORT</span>
+  <span class="yk">timeout_ms</span><span class="op">:</span> <span class="vl">30000</span></pre>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+    <div class="callout callout-warn">
+      <div class="callout-icon">!</div>
+      <div class="callout-body"><strong>Ambassador cache:</strong> Emissary-Ingress caches upstream configs per replica. After updating a Mapping, if traffic is split between old and new pods (intermittent behavior), restart Ambassador: <code>kubectl rollout restart deployment ambassador -n ambassador</code>. This requires access to the <code>ambassador</code> namespace.</div>
+    </div>
+  </section>
+
+  <!-- GITLAB CI -->
+  <section id="gitlab-ci">
+    <div class="section-label">CI/CD</div>
+    <h2>GitLab CI Integration</h2>
+    <p><code>k8s/gitlab-ci-deploy.yml</code> is a ready-made deploy stage. Include it in your service repo's <code>.gitlab-ci.yml</code>. One pipeline job deploys all countries defined in <code>service.yaml</code> automatically — no per-country jobs needed.</p>
+
+    <h3>What the pipeline does</h3>
+    <ol>
+      <li>Reads all countries from <code>service.yaml</code> using <code>yq '.countries | keys | .[]'</code></li>
+      <li><strong>For multi-module projects</strong> (dashboard-application monorepo): copies <code>&lt;service&gt;/application.yaml</code> from the repo checkout to <code>services/&lt;service&gt;/application.&lt;country&gt;.yaml</code> on the deploy server via SCP — once per country</li>
+      <li><strong>For single-module projects</strong> (rest-handler, queue-handler, web): copies from <code>APP_CONFIG_DIR/application.yaml</code></li>
+      <li><strong>For frontend projects</strong> (backoffice-ui, merchant-portal): skips the config copy entirely</li>
+      <li>For each country: SSH to the deploy server, writes the new tag into <code>service.yaml</code>, then runs <code>CI=true ./deploy.sh &lt;service&gt; --country &lt;country&gt;</code></li>
+    </ol>
+
+    <h3>Required CI/CD Variables</h3>
+    <p>Set these in GitLab: Settings → CI/CD → Variables.</p>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Variable</th><th>Type</th><th>Value</th></tr></thead>
+        <tbody>
+          <tr><td><code>SSH_PRIVATE_KEY</code></td><td>File</td><td>Private SSH key authorized to connect to the deploy server as <code>DEPLOY_USER</code></td></tr>
+          <tr><td><code>DEPLOY_USER</code></td><td>Variable</td><td><code>admin-dnf</code></td></tr>
+          <tr><td><code>DEPLOY_HOST</code></td><td>Variable</td><td>IP or hostname of the deploy server</td></tr>
+          <tr><td><code>K8S_DIR</code></td><td>Variable</td><td><code>/home/admin-dnf/k8s</code></td></tr>
+          <tr><td><code>CI_RUNNER_TAG</code></td><td>Variable</td><td>GitLab runner tag for deploy jobs</td></tr>
+          <tr><td><code>SERVICES</code></td><td>Variable</td><td>Space-separated service names: <code>dashboard-acquiring-api dashboard-backoffice</code></td></tr>
+          <tr><td><code>APP_CONFIG_DIR</code></td><td>Variable (optional)</td><td>Path to <code>application.yaml</code> for single-module projects. Default: repo root <code>.</code></td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Adding the deploy stage to a service repo</h3>
+    <div class="code-block">
+      <pre><span class="cm"># .gitlab-ci.yml in your service repository</span>
+
+<span class="yk">include</span><span class="op">:</span>
+  <span class="op">-</span> <span class="yk">project</span><span class="op">:</span> <span class="yv">your-group/k8s</span>
+    <span class="yk">file</span><span class="op">:</span> <span class="yv">gitlab-ci-deploy.yml</span>
+
+<span class="yk">.common-rules</span><span class="op">:</span>
+  <span class="yk">rules</span><span class="op">:</span>
+    <span class="op">-</span> <span class="yk">if</span><span class="op">:</span> <span class="yv">'$CI_COMMIT_TAG'</span>   <span class="yc"># deploy only on version tags (e.g. 1.0.5)</span></pre>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+    <div class="callout callout-note">
+      <div class="callout-icon">i</div>
+      <div class="callout-body">The pipeline sets <code>CI=true</code> before running KubeForge, which bypasses all interactive prompts. The configmap diff confirmation and deploy diff confirmation are auto-accepted in CI mode.</div>
+    </div>
+  </section>
+
+  <!-- DEPLOYED SERVICES -->
+  <section id="services">
+    <div class="section-label">Operations</div>
+    <h2>Deployed Services</h2>
+    <p>All services run in namespace <code>test-mmp</code>. The container registry is <code>MixxMMP-registry-test.tigo.co.tz</code>.</p>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Service</th><th>Port</th><th>Countries</th><th>Current Tag (TZ)</th><th>Config Ver.</th><th>HPA</th><th>Template</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><code>dashboard-backoffice</code></td><td>5501</td><td>tz, tg</td><td>1.0.92-TZ</td><td>v12</td><td>off</td><td>with-config</td></tr>
+          <tr><td><code>dashboard-acquiring-api</code></td><td>5503</td><td>tz, tg</td><td>1.0.86-TZ</td><td>v8</td><td>1-2 pods</td><td>with-config</td></tr>
+          <tr><td><code>dashboard-merchant-api</code></td><td>5502</td><td>tz, tg</td><td>1.0.86-TZ</td><td>v6</td><td>1-2 pods</td><td>with-config</td></tr>
+          <tr><td><code>dashboard-job-processor</code></td><td>8085</td><td>tz, tg</td><td>1.0.82-TZ</td><td>v4</td><td>off</td><td>with-config</td></tr>
+          <tr><td><code>rest-handler</code></td><td>8081</td><td>tz, tg</td><td>1.0.3</td><td>v4</td><td>off</td><td>with-config</td></tr>
+          <tr><td><code>queue-handler</code></td><td>8080</td><td>tz, tg</td><td>1.0.1</td><td>v1</td><td>off</td><td>with-config</td></tr>
+          <tr><td><code>web</code></td><td>7033</td><td>tz, tg</td><td>1.0.0</td><td>v2</td><td>off</td><td>with-config</td></tr>
+          <tr><td><code>backoffice-ui</code></td><td>80</td><td>tz, tg</td><td>1.0.31</td><td>—</td><td>off</td><td>no-config</td></tr>
+          <tr><td><code>merchant-portal</code></td><td>80</td><td>tz, tg</td><td>1.0.21</td><td>—</td><td>off</td><td>no-config</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Kubernetes resource names (per service per country)</h3>
+    <p>For example, <code>dashboard-backoffice</code> in Tanzania:</p>
+    <div class="kv-grid">
+      <div class="kv-row"><div class="kv-key">Deployment</div><div class="kv-val"><code>dashboard-backoffice-tz</code></div></div>
+      <div class="kv-row"><div class="kv-key">Service</div><div class="kv-val"><code>dashboard-backoffice-tz-service</code></div></div>
+      <div class="kv-row"><div class="kv-key">ConfigMap</div><div class="kv-val"><code>dashboard-backoffice-config-tz-v12-1.0.92-tz</code></div></div>
+      <div class="kv-row"><div class="kv-key">Ambassador Mapping</div><div class="kv-val"><code>dashboard-backoffice-tz-mapping</code> (namespace: <code>test-mmp</code>)</div></div>
+      <div class="kv-row"><div class="kv-key">Pod selector</div><div class="kv-val"><code>app=dashboard-backoffice-tz</code></div></div>
+    </div>
+
+    <h3>Ambassador hosts</h3>
+    <div class="kv-grid">
+      <div class="kv-row"><div class="kv-key">Tanzania (tz)</div><div class="kv-val"><code>mixxmmp-test.tigo.co.tz</code> — TLS: <code>mixxmmp-tls-secret</code></div></div>
+      <div class="kv-row"><div class="kv-key">Togo (tg)</div><div class="kv-val"><code>togo.mixx.tg</code> — TLS: <code>tg-tls</code></div></div>
+      <div class="kv-row"><div class="kv-key">MetalLB VIP</div><div class="kv-val"><code>10.245.0.169</code> — used in <code>hostAliases</code> so pods can reach their own public URL</div></div>
+    </div>
+  </section>
+
+  <!-- TROUBLESHOOTING -->
+  <section id="troubleshooting">
+    <div class="section-label">Operations</div>
+    <h2>Troubleshooting</h2>
+
+    <h3>Pod not picking up config changes after deploy</h3>
+    <p><strong>Symptom:</strong> Deploy succeeds but pods still use old configuration values.</p>
+    <p><strong>What's happening:</strong> You changed values in <code>application.&lt;country&gt;.yaml</code> but the Deployment spec was unchanged (same image tag, same ConfigMap name). KubeForge now handles this automatically — it detects the "ConfigMap updated but Deployment unchanged" case and triggers <code>kubectl rollout restart</code>. If you're on an older version, run the restart manually:</p>
+    <div class="code-block">
+      <pre><span class="p">$</span> kubeforge dashboard-backoffice --country tz --restart</pre>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+
+    <h3>CrashLoopBackOff after deploy</h3>
+    <p>Check what the pod is actually printing:</p>
+    <div class="code-block">
+      <pre><span class="p">$</span> kubectl logs -n test-mmp -l app=dashboard-backoffice-tz --tail=50
+<span class="p">$</span> kubectl describe pod -n test-mmp -l app=dashboard-backoffice-tz</pre>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+    <p>Common causes:</p>
+    <ul>
+      <li>Missing or misspelled key in <code>application.&lt;country&gt;.yaml</code> — Spring Boot fails binding</li>
+      <li>Wrong DB connection string or credentials</li>
+      <li><code>dashboard-application-secrets</code> missing a key the app expects</li>
+      <li><strong>nginx only:</strong> non-breaking spaces (U+00A0) in <code>nginx.conf</code> from copy-pasting — causes <em>unknown directive "    listen"</em>. Detect with <code>cat -A nginx.conf | grep 'M-BM-'</code>; fix with <code>sed -i 's/\xc2\xa0/ /g' nginx.conf</code>, rebuild image.</li>
+    </ul>
+
+    <h3>ImagePullBackOff</h3>
+    <p>The image tag doesn't exist in the registry or <code>my-registry-secret</code> credentials have expired.</p>
+    <div class="code-block">
+      <pre><span class="p">$</span> docker manifest inspect MixxMMP-registry-test.tigo.co.tz/dashboard-backoffice:1.0.92-TZ</pre>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+
+    <h3>Rollout stuck at 30 seconds</h3>
+    <p>KubeForge prints a live pod table at 30 seconds and auto-rollbacks at <code>rollout_timeout</code>. After rollback, investigate:</p>
+    <div class="code-block">
+      <pre><span class="p">$</span> kubectl get events -n test-mmp --sort-by='.lastTimestamp' | tail -20
+<span class="p">$</span> kubectl describe deployment dashboard-backoffice-tz -n test-mmp</pre>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+
+    <h3>404 on SPA assets (backoffice-ui, merchant-portal)</h3>
+    <p>Vite hashes JS/CSS filenames on each build. A browser-cached <code>index.html</code> with old hash references causes 404 on assets. The nginx config must serve <code>index.html</code> with <code>Cache-Control: no-cache, no-store, must-revalidate</code>. This is already set in the current nginx.conf for both frontend services. If you see 404s:</p>
+    <ol>
+      <li>Hard-refresh in the browser (Ctrl+Shift+R / Cmd+Shift+R)</li>
+      <li>If still failing, check that the asset actually exists inside the pod: <code>kubectl exec -n test-mmp &lt;pod&gt; -- ls /usr/share/nginx/html/assets/</code></li>
+      <li>If the asset exists in the pod but the URL returns 404, Ambassador may be routing to a stale upstream — restart Ambassador (requires <code>ambassador</code> namespace access)</li>
+    </ol>
+
+    <h3>Traffic split between old and new pods (Ambassador cache)</h3>
+    <div class="code-block">
+      <pre><span class="cm"># Requires access to the ambassador namespace</span>
+<span class="p">$</span> kubectl rollout restart deployment ambassador -n ambassador</pre>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+
+    <h3>Inspect a running pod's mounted config</h3>
+    <div class="code-block">
+      <pre><span class="cm"># Start a temporary pod with the same image to inspect</span>
+<span class="p">$</span> kubectl run temp-inspect -n test-mmp \
+    --image=MixxMMP-registry-test.tigo.co.tz/dashboard-backoffice:1.0.92-TZ \
+    --restart=Never --command -- sleep 120
+<span class="p">$</span> kubectl exec -n test-mmp temp-inspect -- cat /app/config/application.yaml
+<span class="p">$</span> kubectl delete pod temp-inspect -n test-mmp</pre>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+
+    <h3>Full health check</h3>
+    <div class="code-block">
+      <pre><span class="cm"># Cluster-level: kubeconfig, API server, namespace access</span>
+<span class="p">$</span> kubeforge doctor
+
+<span class="cm"># Service-level: secrets, PVC, pod status, ConfigMap, image pull errors</span>
+<span class="p">$</span> kubeforge dashboard-backoffice --country tz --doctor
+
+<span class="cm"># Review recent deploy history</span>
+<span class="p">$</span> kubeforge history 30</pre>
+      <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+    </div>
+  </section>
+
+  <footer class="doc-footer">
+    <span>KubeForge — Internal tooling, MixxMMP Payment Platform</span>
+    <span>Authored by Naimatullah Khan &middot; July 2026</span>
+  </footer>
+</main>
+
+<button class="mobile-toggle" id="mobileToggle" aria-label="Toggle navigation">
+  <svg width="18" height="18" viewBox="0 0 18 18" fill="currentColor">
+    <rect y="2" width="18" height="2" rx="1"/><rect y="8" width="18" height="2" rx="1"/><rect y="14" width="18" height="2" rx="1"/>
+  </svg>
+</button>
+
+<script>
+function copyCode(btn) {
+  const pre = btn.parentElement.querySelector('pre');
+  if (!pre) return;
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = 'Copied';
+    btn.classList.add('copied');
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+  }).catch(() => {});
+}
+
+const navLinks = document.querySelectorAll('.nav-link');
+const sections = document.querySelectorAll('section[id]');
+const obs = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      navLinks.forEach(l => l.classList.remove('active'));
+      const link = document.querySelector('.nav-link[href="#' + e.target.id + '"]');
+      if (link) link.classList.add('active');
+    }
+  });
+}, { rootMargin: '-8% 0px -80% 0px', threshold: 0 });
+sections.forEach(s => obs.observe(s));
+
+const sidebar = document.getElementById('sidebar');
+document.getElementById('mobileToggle').addEventListener('click', () => sidebar.classList.toggle('open'));
+document.addEventListener('click', (e) => {
+  if (!sidebar.contains(e.target) && e.target.id !== 'mobileToggle') sidebar.classList.remove('open');
+});
+</script>
